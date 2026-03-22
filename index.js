@@ -1,5 +1,4 @@
-import { extension_settings, setExtensionPrompt, extension_prompt_types } from '../../../extensions.js';
-import { saveSettingsDebounced } from '../../../../script.js';
+import { extension_settings, setExtensionPrompt, extension_prompt_types, saveSettingsExtension } from '../../../extensions.js';
 
 const EXTENSION_NAME = 'ascde';
 const extensionFolderPath = `scripts/extensions/third-party/${EXTENSION_NAME}`;
@@ -25,7 +24,7 @@ async function loadData() {
                 extension_settings[EXTENSION_NAME] = {};
             }
             extension_settings[EXTENSION_NAME].customData = styleData;
-            saveSettingsDebounced();
+            saveSettingsExtension();
         } catch (error) {
             console.error(`[Style Combinator] 데이터 로드 실패:`, error);
         }
@@ -74,33 +73,35 @@ function renderModalContent(modal) {
     container.append(`<div id="style-status-panel" style="margin-bottom:10px; padding:8px; display:none;"></div>`);
 
     // 축별 버튼 렌더링
-    styleData.axes.forEach(axis => {
-        const axisDiv = $(`<div class="style-axis" data-axis="${axis.id}"></div>`);
-        axisDiv.append(`<h4>[${axis.name}]</h4>`);
+    if(styleData.axes) {
+        styleData.axes.forEach(axis => {
+            const axisDiv = $(`<div class="style-axis" data-axis="${axis.id}"></div>`);
+            axisDiv.append(`<h4>[${axis.name}]</h4>`);
 
-        const btnContainer = $(`<div class="style-buttons"></div>`);
-        const stylesInAxis = styleData.styles.filter(s => s.axis === axis.id);
+            const btnContainer = $(`<div class="style-buttons"></div>`);
+            const stylesInAxis = styleData.styles.filter(s => s.axis === axis.id);
 
-        stylesInAxis.forEach(style => {
-            const btn = $(`
-                <button class="style-toggle menu_button" data-id="${style.id}" title="${style.description || ''}">
-                    ${style.id}. ${style.name}
-                </button>
-            `);
+            stylesInAxis.forEach(style => {
+                const btn = $(`
+                    <button class="style-toggle menu_button" data-id="${style.id}" title="${style.description || ''}">
+                        ${style.id}. ${style.name}
+                    </button>
+                `);
 
-            btn.on('click', () => toggleStyle(style, axis.type, btn));
-            btn.on('contextmenu', (e) => {
-                e.preventDefault();
-                loadToEditor(style);
+                btn.on('click', () => toggleStyle(style, axis.type, btn));
+                btn.on('contextmenu', (e) => {
+                    e.preventDefault();
+                    loadToEditor(style);
+                });
+
+                if (activeStyles.has(style.id)) btn.addClass('active_style');
+                btnContainer.append(btn);
             });
 
-            if (activeStyles.has(style.id)) btn.addClass('active_style');
-            btnContainer.append(btn);
+            axisDiv.append(btnContainer);
+            container.append(axisDiv);
         });
-
-        axisDiv.append(btnContainer);
-        container.append(axisDiv);
-    });
+    }
 
     modal.append(container);
 
@@ -153,16 +154,18 @@ function checkCombinationRules() {
     let synergyMsg = [];
 
     // 같은 축 2개 이상 선택 경고
-    styleData.axes.forEach(axis => {
-        if (axis.id === 'V') return; // 모드 축은 다중 허용
-        const stylesInAxis = activeArr.filter(id => {
-            const found = styleData.styles.find(s => s.id === id);
-            return found && found.axis === axis.id;
+    if(styleData.axes) {
+        styleData.axes.forEach(axis => {
+            if (axis.id === 'V') return; // 모드 축은 다중 허용
+            const stylesInAxis = activeArr.filter(id => {
+                const found = styleData.styles.find(s => s.id === id);
+                return found && found.axis === axis.id;
+            });
+            if (stylesInAxis.length > 1) {
+                warningMsg.push(`🟡 주의: [${axis.name}] 축에서 ${stylesInAxis.length}개 선택됨 (${stylesInAxis.join(', ')}). 하나를 기본, 하나를 보조로 설계해야 합니다.`);
+            }
         });
-        if (stylesInAxis.length > 1) {
-            warningMsg.push(`🟡 주의: [${axis.name}] 축에서 ${stylesInAxis.length}개 선택됨 (${stylesInAxis.join(', ')}). 하나를 기본, 하나를 보조로 설계해야 합니다.`);
-        }
-    });
+    }
 
     // 비추 / 시너지 쌍 체크
     if (styleData.rules && styleData.rules.incompatible_pairs) {
@@ -226,7 +229,7 @@ function saveActiveStyles() {
         extension_settings[EXTENSION_NAME] = {};
     }
     extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
-    saveSettingsDebounced();
+    saveSettingsExtension();
 }
 
 // 프롬프트 조합 및 SillyTavern 파이프라인에 주입
@@ -290,7 +293,7 @@ function renderEditorUI(parent) {
     editorContainer.append(`<h4>문체 데이터 에디터 (우클릭으로 로드)</h4>`);
     const formHtml = `<div>
         <input type="text" id="edit-style-id" placeholder="ID (예: K, C)">
-        <select id="edit-style-axis">${styleData.axes.map(ax => `<option value="${ax.id}">${ax.name}</option>`).join('')}</select>
+        <select id="edit-style-axis">${styleData.axes ? styleData.axes.map(ax => `<option value="${ax.id}">${ax.name}</option>`).join('') : ''}</select>
         <input type="text" id="edit-style-name" placeholder="이름">
         <input type="text" id="edit-style-desc" placeholder="설명 툴팁">
         <textarea id="edit-style-payload" rows="8" placeholder="[MODULE...] 프롬프트 지침"></textarea>
@@ -361,7 +364,7 @@ function persistDataAndRefresh() {
     }
     extension_settings[EXTENSION_NAME].customData = styleData;
     extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
-    saveSettingsDebounced();
+    saveSettingsExtension();
     closeModal();
     openModal();
 }
