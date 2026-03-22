@@ -577,10 +577,70 @@ function updatePromptInjection() {
 
     let finalPrompt = '';
     if (selected.length > 0) {
-        finalPrompt = '### [COMBINED LITERARY ROLEPLAY ENGINE]\n';
-        selected.forEach(s => {
-            finalPrompt += `\n<MODULE_OVERLAY: AXIS_${s.axis} | STYLE_${s.id}>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n`;
-        });
+        // 축별로 분류
+        const toneStyles   = selected.filter(s => AXIS_TONE.includes(s.id));
+        const genreStyles  = selected.filter(s => AXIS_GENRE.includes(s.id));
+        const formatStyles = selected.filter(s => AXIS_FORMAT.includes(s.id));
+        const worldStyles  = selected.filter(s => AXIS_WORLD.includes(s.id));
+        const modeStyles   = selected.filter(s => AXIS_MODE.includes(s.id));
+
+        finalPrompt = '### [COMBINED LITERARY ROLEPLAY ENGINE]\n\n';
+
+        // 빌드 순서 & 우선순위 헤더
+        finalPrompt += '## BUILD ORDER & PRIORITY\n';
+        finalPrompt += '이 프롬프트는 축별 우선순위에 따라 구성되었습니다.\n';
+        finalPrompt += '충돌 시 우선순위: 모드(Ⅴ) > 관계/장르(Ⅲ) > 톤(Ⅱ) > 형식(Ⅰ) > 세계관(Ⅳ)\n';
+        finalPrompt += 'Supreme Rule: 캐릭터 진실성이 모든 것 위에 있습니다.\n\n';
+
+        // 충돌 해결 규칙
+        finalPrompt += '## CONFLICT RESOLUTION\n';
+        finalPrompt += '- 비유 허용/금지 충돌 → 관계/장르 우선\n';
+        finalPrompt += '- 감정 명명 충돌 → 관계/장르 우선\n';
+        finalPrompt += '- 시제 충돌 → 형식 우선\n';
+        finalPrompt += '- FID 비율 충돌 → 높은 쪽 채택\n';
+        finalPrompt += '- 감각 우선순위 → 세계관 > 톤 > 기본값\n';
+        finalPrompt += '- 문단 길이 → 긴 쪽 상한, 짧은 쪽 하한\n';
+        finalPrompt += '- 대사 길이 → 짧은 쪽 채택\n\n';
+
+        // LAYER 1: 톤 (베이스)
+        if (toneStyles.length > 0) {
+            finalPrompt += '## LAYER 1 — BASE TONE (기본 골격)\n';
+            toneStyles.forEach(s => {
+                finalPrompt += `<MODULE_OVERLAY: AXIS_II | STYLE_${s.id} | PRIORITY=BASE>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
+            });
+        }
+
+        // LAYER 2: 관계/장르
+        if (genreStyles.length > 0) {
+            finalPrompt += '## LAYER 2 — GENRE OVERLAY (서사 방향)\n';
+            genreStyles.forEach(s => {
+                finalPrompt += `<MODULE_OVERLAY: AXIS_III | STYLE_${s.id} | PRIORITY=HIGH>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
+            });
+        }
+
+        // LAYER 3: 형식
+        if (formatStyles.length > 0) {
+            finalPrompt += '## LAYER 3 — FORMAT OVERLAY (문장 리듬)\n';
+            formatStyles.forEach(s => {
+                finalPrompt += `<MODULE_OVERLAY: AXIS_I | STYLE_${s.id} | PRIORITY=MEDIUM>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
+            });
+        }
+
+        // LAYER 4: 세계관
+        if (worldStyles.length > 0) {
+            finalPrompt += '## LAYER 4 — WORLD OVERLAY (세계관)\n';
+            worldStyles.forEach(s => {
+                finalPrompt += `<MODULE_OVERLAY: AXIS_IV | STYLE_${s.id} | PRIORITY=LOW>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
+            });
+        }
+
+        // LAYER 5: 모드 (최상단)
+        if (modeStyles.length > 0) {
+            finalPrompt += '## LAYER 5 — MODE (최우선 레이어)\n';
+            modeStyles.forEach(s => {
+                finalPrompt += `<MODULE_OVERLAY: AXIS_V | STYLE_${s.id} | PRIORITY=SUPREME>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
+            });
+        }
     }
 
     if (typeof setExtensionPrompt === 'function') {
