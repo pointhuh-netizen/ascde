@@ -1,32 +1,69 @@
-.style-combinator-ui {
-    padding: 15px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    margin-bottom: 20px;
+#style-combinator-modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#style-combinator-modal {
+    background: #1e1e1e;
+    padding: 25px;
+    border-radius: 12px;
+    width: 90%; max-width: 900px;
+    max-height: 85vh;
+    overflow-y: auto;
+    border: 1px solid #555;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    color: #eee;
+}
+
+#style-combinator-modal-close {
+    position: absolute;
+    top: 15px; right: 20px;
+    background: none; border: none;
+    color: #fff; font-size: 28px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+#style-combinator-modal-close:hover {
+    color: #ff6666;
 }
 
 .style-axis {
     margin-bottom: 15px;
     border-left: 3px solid #ffcc00;
-    padding-left: 10px;
+    padding-left: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    padding-top: 5px; padding-bottom: 5px;
 }
 
 .style-buttons {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    margin-top: 8px;
 }
 
 .style-toggle {
     opacity: 0.6;
     transition: all 0.2s ease-in-out;
     cursor: pointer;
-    padding: 5px 10px;
+    padding: 6px 12px;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    background: #222;
+    color: #ccc;
 }
 
 .style-toggle:hover {
-    opacity: 0.8;
+    opacity: 0.9;
+    background: #333;
 }
 
 .style-toggle.active_style {
@@ -35,145 +72,4 @@
     color: #111;
     font-weight: bold;
     border: 1px solid #ffcc00;
-}
-
-.style-editor-ui {
-    margin-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 15px;
-}
-
-.style-editor-ui input, 
-.style-editor-ui select, 
-.style-editor-ui textarea {
-    width: 100%;
-    margin-bottom: 8px;
-    padding: 5px;
-    background: rgba(0,0,0,0.5);
-    color: white;
-    border: 1px solid #555;
-}
-
-#style-preview-container {
-    margin-top: 15px;
-    padding: 10px;
-    background: rgba(0,0,0,0.4);
-    border: 1px dashed #777;
-}
-
-#style-combinator-preview {
-    white-space: pre-wrap;
-    font-family: monospace;
-    font-size: 0.9em;
-    color: #00ffcc;
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-/* 추천 조합 패널 */
-.style-recommendations {
-    margin-bottom: 15px;
-    padding: 10px;
-    background: rgba(255, 204, 0, 0.08);
-    border: 1px solid rgba(255, 204, 0, 0.3);
-    border-radius: 5px;
-}
-
-.style-recommendations h4 {
-    margin-top: 0;
-    color: #ffcc00;
-}
-
-.style-recommendations ul {
-    margin: 2px 0 10px 20px;
-    padding: 0;
-    list-style-type: circle;
-}
-
-.style-recommendations li {
-    font-size: 0.9em;
-    line-height: 1.4;
-}
-
-.style-recommendations .formula {
-    color: #ffcc00;
-}
-
-.style-recommendations .variant {
-    color: #aaa;
-}
-
-/* 상태 패널 */
-#style-status-panel {
-    border-radius: 4px;
-    font-weight: bold;
-}
-
-#style-status-panel .warnings {
-    color: #ff6666;
-}
-
-#style-status-panel .synergies {
-    color: #66ff66;
-}
-
-/* 추천 조합 클릭 가능 항목 */
-.rec-apply-btn {
-    cursor: pointer;
-    background: none;
-    border: 1px solid rgba(255, 204, 0, 0.4);
-    color: #ffcc00;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 0.8em;
-    margin-left: 5px;
-}
-
-.rec-apply-btn:hover {
-    background: rgba(255, 204, 0, 0.2);
-}
-
-/* 모달 오버레이 */
-#style-combinator-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* 모달 본체 */
-#style-combinator-modal {
-    position: relative;
-    width: 85vw;
-    max-width: 900px;
-    max-height: 85vh;
-    overflow-y: auto;
-    background: var(--SmartThemeBlurTintColor, #1a1a2e);
-    border: 1px solid rgba(255, 204, 0, 0.3);
-    border-radius: 10px;
-    padding: 25px;
-    box-shadow: 0 0 30px rgba(255, 204, 0, 0.1);
-}
-
-/* 닫기 버튼 */
-#style-combinator-modal-close {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    background: none;
-    border: none;
-    color: #fff;
-    font-size: 24px;
-    cursor: pointer;
-    z-index: 10000;
-}
-
-#style-combinator-modal-close:hover {
-    color: #ffcc00;
 }
