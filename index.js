@@ -1,9 +1,9 @@
-import { extension_settings, setExtensionPrompt, extension_prompt_types } from '../../../extensions.js';
-// ⚠️ 주의: 점 3개 폴더(../)가 3번 반복되어야 정상 작동합니다.
-import { saveSettingsDebounced } from '../../../script.js';
+import { extension_settings, setExtensionPrompt, extension_prompt_types, saveSettingsExtension } from '../../../extensions.js';
 
 const EXTENSION_NAME = 'ascde';
-const extensionFolderPath = `scripts/extensions/third-party/${EXTENSION_NAME}`;
+
+// 💡 핵심 마법: 확장이 어디에 설치되든 자기 자신의 경로를 자동으로 찾아냅니다!
+const extensionUrl = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
 
 let styleData = { axes: [], rules: {}, recommendations: [], styles: [] };
 let activeStyles = new Set();
@@ -18,11 +18,12 @@ async function loadData() {
         styleData = settings.customData;
     } else {
         try {
-            const response = await fetch(`/${extensionFolderPath}/data.json`);
+            // 하드코딩된 경로 대신 자동 탐색 경로 사용
+            const response = await fetch(`${extensionUrl}/data.json`);
             if (response.ok) {
                 styleData = await response.json();
                 extension_settings[EXTENSION_NAME].customData = styleData;
-                saveSettingsDebounced();
+                saveSettingsExtension();
             }
         } catch (error) {
             console.error(`[Style Combinator] data.json 로드 실패:`, error);
@@ -36,7 +37,7 @@ async function loadData() {
 
 function saveActiveStyles() {
     extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
-    saveSettingsDebounced();
+    saveSettingsExtension();
 }
 
 function openModal() {
@@ -135,7 +136,6 @@ function checkCombinationRules() {
     let warningMsg = [];
     const activeArr = Array.from(activeStyles);
 
-    // 같은 축 중복 검사 (V: 모드 제외)
     if (styleData.axes) {
         styleData.axes.forEach(axis => {
             if (axis.id === 'V') return; 
@@ -169,7 +169,6 @@ function updatePromptInjection() {
         });
     }
 
-    // 시스템 프롬프트에 자동 주입
     if (typeof setExtensionPrompt === 'function') {
         const position = extension_prompt_types ? extension_prompt_types.IN_PROMPT : 0;
         setExtensionPrompt(EXTENSION_NAME, finalPrompt, position, 0);
@@ -188,26 +187,24 @@ function updateActiveSummary() {
     $('#style-combinator-active-summary').text(text);
 }
 
-// 초기화 시작 (SillyTavern이 로드될 때 실행)
+// 초기화 시작
 jQuery(async () => {
-    // 1. CSS 파일 적용
-    if ($(`link[href="/${extensionFolderPath}/style.css"]`).length === 0) {
-        $('head').append(`<link rel="stylesheet" href="/${extensionFolderPath}/style.css">`);
+    // 1. CSS 파일 동적 적용 (자동 경로)
+    if ($(`link[href="${extensionUrl}/style.css"]`).length === 0) {
+        $('head').append(`<link rel="stylesheet" href="${extensionUrl}/style.css">`);
     }
 
-    // 2. HTML 로드해서 확장 패널에 붙이기
+    // 2. HTML 로드해서 확장 패널에 붙이기 (자동 경로)
     try {
-        const html = await $.get(`/${extensionFolderPath}/index.html`);
+        const html = await $.get(`${extensionUrl}/index.html`);
         $('#extensions_settings').append(html);
     } catch (e) {
         console.error('[Style Combinator] index.html 로드 실패', e);
         return;
     }
 
-    // 3. 버튼 이벤트 연결
     $('#btn-open-style-combinator').on('click', openModal);
 
-    // 4. 데이터 로드 및 적용
     await loadData();
     updatePromptInjection();
     updateActiveSummary();
