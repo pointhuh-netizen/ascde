@@ -1,14 +1,14 @@
-import { getContext, saveSettingsExtension, setExtensionPrompt, extension_prompt_types } from '../../../extensions.js';
+import { extension_settings, getContext, loadExtensionSettings, setExtensionPrompt, extension_prompt_types } from '../../../extensions.js';
+import { saveSettingsDebounced } from '../../../../script.js';
 
-const EXTENSION_NAME = 'style-combinator';
+const EXTENSION_NAME = 'ascde';
 const extensionFolderPath = `scripts/extensions/third-party/${EXTENSION_NAME}`;
 let styleData = { axes: [], rules: {}, recommendations: [], styles: [] };
 let activeStyles = new Set();
 
 // 데이터 로드 (설정 또는 data.json에서)
 async function loadData() {
-    const context = getContext();
-    const settings = context.extension_settings[EXTENSION_NAME];
+    const settings = extension_settings[EXTENSION_NAME];
 
     if (settings && settings.customData) {
         styleData = settings.customData;
@@ -18,11 +18,11 @@ async function loadData() {
             if (!response.ok) throw new Error('Network response was not ok');
             styleData = await response.json();
 
-            if (!context.extension_settings[EXTENSION_NAME]) {
-                context.extension_settings[EXTENSION_NAME] = {};
+            if (!extension_settings[EXTENSION_NAME]) {
+                extension_settings[EXTENSION_NAME] = {};
             }
-            context.extension_settings[EXTENSION_NAME].customData = styleData;
-            saveSettingsExtension();
+            extension_settings[EXTENSION_NAME].customData = styleData;
+            saveSettingsDebounced();
         } catch (error) {
             console.error(`[Style Combinator] 데이터 로드 실패:`, error);
         }
@@ -219,12 +219,11 @@ function toggleStyle(style, axisType, btnElement) {
 
 // activeStyles를 extension_settings에 저장
 function saveActiveStyles() {
-    const context = getContext();
-    if (!context.extension_settings[EXTENSION_NAME]) {
-        context.extension_settings[EXTENSION_NAME] = {};
+    if (!extension_settings[EXTENSION_NAME]) {
+        extension_settings[EXTENSION_NAME] = {};
     }
-    context.extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
-    saveSettingsExtension();
+    extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
+    saveSettingsDebounced();
 }
 
 // 프롬프트 조합 및 SillyTavern 파이프라인에 주입
@@ -268,9 +267,8 @@ function updatePromptInjection() {
     }
 
     // 설정에도 저장 (백업)
-    const context = getContext();
-    if (context.extension_settings[EXTENSION_NAME]) {
-        context.extension_settings[EXTENSION_NAME].injectedPrompt = finalPrompt;
+    if (extension_settings[EXTENSION_NAME]) {
+        extension_settings[EXTENSION_NAME].injectedPrompt = finalPrompt;
     }
 
     // 프리뷰 업데이트
@@ -355,13 +353,12 @@ function clearAllStyles() {
 
 // 데이터 저장 및 UI 갱신
 function persistDataAndRefresh() {
-    const context = getContext();
-    if (!context.extension_settings[EXTENSION_NAME]) {
-        context.extension_settings[EXTENSION_NAME] = {};
+    if (!extension_settings[EXTENSION_NAME]) {
+        extension_settings[EXTENSION_NAME] = {};
     }
-    context.extension_settings[EXTENSION_NAME].customData = styleData;
-    context.extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
-    saveSettingsExtension();
+    extension_settings[EXTENSION_NAME].customData = styleData;
+    extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
+    saveSettingsDebounced();
     closeModal();
     openModal();
 }
