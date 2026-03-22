@@ -1,1 +1,1 @@
-{"name":"style-combinator","display_name":"Style Combinator (45 Versions)","version":"1.1.0","description":"45종 문체 교차 조합 매뉴얼 기반 프롬프트 자동 생성 및 CRUD 관리 확장","author":"User","requires":[]}
+{"name": "ascde", "display_name": "Style Combinator (45 Versions)", "version": "1.2.0", "description": "45종 문체 교차 조합 매뉴얼 기반 프롬프트 자동 생성 및 CRUD 관리 확장", "author": "User", "requires": []}
