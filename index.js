@@ -1,4 +1,5 @@
 import { extension_settings, getContext, setExtensionPrompt, extension_prompt_types } from '../../../extensions.js';
+import { saveSettingsDebounced } from '../../../../script.js';
 
 const EXTENSION_NAME = 'ascde';
 const extensionUrl = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
@@ -29,10 +30,7 @@ async function loadData() {
 
 function saveActiveStyles() {
     extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
-    const context = getContext();
-    if (context && typeof context.saveSettings === 'function') {
-        context.saveSettings();
-    }
+    saveSettingsDebounced();
 }
 
 function openModal() {
@@ -76,11 +74,10 @@ function renderModalContent(modal) {
             stylesInAxis.forEach(style => {
                 const isActive = activeStyles.has(style.id) ? 'active_style' : '';
                 const btn = $(`
-                    <button class="style-toggle ${isActive}" data-id="${style.id}">
+                    <button class="style-toggle ${isActive}" data-id="${style.id}" title="${style.description || ''}">
                         ${style.id}. ${style.name}
                     </button>
                 `);
-
                 btn.on('click', () => toggleStyle(style, axis.type, btn));
                 btnContainer.append(btn);
             });
@@ -88,13 +85,12 @@ function renderModalContent(modal) {
             axisDiv.append(btnContainer);
             container.append(axisDiv);
         });
-    } else {
-        container.append(`<p style="color:#ff6666;">데이터를 불러오지 못했습니다. data.json을 확인하세요.</p>`);
     }
 
     modal.append(container);
 
-    const previewContainer = $(`<div id="style-preview-container" style="margin-top:20px; padding:15px; background:rgba(0,0,0,0.4); border:1px dashed #777; border-radius:8px;">
+    // 프리뷰 패널
+    const previewContainer = $(`<div style="margin-top:15px; padding:12px; background:rgba(0,0,0,0.4); border:1px dashed #777; border-radius:5px;">
         <h4 style="margin-top:0; color:#88ccff;">🔍 실시간 프롬프트 프리뷰</h4>
         <div id="style-combinator-preview" style="max-height:150px; overflow-y:auto; white-space:pre-wrap; font-family:monospace; color:#00ffcc; font-size:0.85em;">선택된 문체가 없습니다.</div>
     </div>`);
@@ -171,30 +167,35 @@ function updatePromptInjection() {
 
 function updateActiveSummary() {
     const names = Array.from(activeStyles)
-        .map(id => {
-            const s = styleData.styles.find(x => x.id === id);
-            return s ? `${s.id}(${s.name})` : id;
-        });
-    const text = names.length > 0 ? `활성화됨: ${names.join(', ')}` : '선택된 문체: 없음';
+        .map(id => styleData.styles.find(s => s.id === id))
+        .filter(Boolean)
+        .map(s => s.name);
+    const text = names.length > 0 ? `선택된 문체: ${names.join(', ')}` : '선택된 문체: 없음';
     $('#style-combinator-active-summary').text(text);
 }
 
+// 초기화
 jQuery(async () => {
-    if ($(`link[href="${extensionUrl}/style.css"]`).length === 0) {
-        $('head').append(`<link rel="stylesheet" href="${extensionUrl}/style.css">`);
-    }
+    extension_settings[EXTENSION_NAME] = extension_settings[EXTENSION_NAME] || {};
 
     try {
-        const html = await $.get(`${extensionUrl}/index.html`);
-        $('#extensions_settings').append(html);
-    } catch (e) {
-        console.error('[ascde] index.html 로드 실패', e);
+        const settingsHtml = await $.get(`${extensionUrl}/index.html`);
+        $('#extensions_settings2').append(settingsHtml);
+    } catch (error) {
+        console.error(`[ascde] UI HTML 로드 실패:`, error);
         return;
     }
 
     $('#btn-open-style-combinator').on('click', openModal);
 
     await loadData();
-    updatePromptInjection();
+
+    if (typeof setExtensionPrompt === 'function') {
+        setExtensionPrompt(EXTENSION_NAME, '', extension_prompt_types.IN_PROMPT, 0);
+    }
+
+    if (activeStyles.size > 0) {
+        updatePromptInjection();
+    }
     updateActiveSummary();
 });
