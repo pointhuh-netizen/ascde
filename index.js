@@ -192,7 +192,7 @@ jQuery(async () => {
     // HTML 로드 및 올바른 위치(#extensions_settings)에 추가
     try {
         const html = await $.get(`${extensionUrl}/index.html`);
-        $('#extensions_settings').append(html);
+        $('#extensions_settings').append(html); // 여기가 무조건 이래야 뜹니다!
     } catch (e) {
         console.error('[Style Combinator] index.html 로드 실패', e);
         return;
