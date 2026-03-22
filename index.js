@@ -2,7 +2,7 @@ import { extension_settings, setExtensionPrompt, extension_prompt_types, saveSet
 
 const EXTENSION_NAME = 'ascde';
 
-// 💡 핵심 마법: 확장이 어디에 설치되든 자기 자신의 경로를 자동으로 찾아냅니다!
+// 💡 마법의 코드: 확장이 어디에 깔리든 자기 폴더 주소를 알아서 찾아냅니다.
 const extensionUrl = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
 
 let styleData = { axes: [], rules: {}, recommendations: [], styles: [] };
@@ -18,12 +18,11 @@ async function loadData() {
         styleData = settings.customData;
     } else {
         try {
-            // 하드코딩된 경로 대신 자동 탐색 경로 사용
             const response = await fetch(`${extensionUrl}/data.json`);
             if (response.ok) {
                 styleData = await response.json();
                 extension_settings[EXTENSION_NAME].customData = styleData;
-                saveSettingsExtension();
+                if (typeof saveSettingsExtension === 'function') saveSettingsExtension();
             }
         } catch (error) {
             console.error(`[Style Combinator] data.json 로드 실패:`, error);
@@ -37,7 +36,7 @@ async function loadData() {
 
 function saveActiveStyles() {
     extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
-    saveSettingsExtension();
+    if (typeof saveSettingsExtension === 'function') saveSettingsExtension();
 }
 
 function openModal() {
@@ -66,7 +65,6 @@ function closeModal() {
 function renderModalContent(modal) {
     const container = $(`<div id="style-combinator-container"></div>`);
     container.append(`<h2 style="margin-top:0; color:#ffcc00;">📚 문체 교차 조합 매뉴얼</h2>`);
-    container.append(`<p style="color:#aaa; font-size:0.9em; margin-bottom:20px;">원하는 분위기와 장르를 클릭하여 활성화하세요. (우클릭 시 데이터 편집 가능)</p>`);
 
     const statusPanel = $(`<div id="style-status-panel" style="margin-bottom:15px; padding:10px; background:rgba(0,0,0,0.5); border-radius:5px; display:none;"></div>`);
     container.append(statusPanel);
@@ -88,7 +86,6 @@ function renderModalContent(modal) {
                 `);
 
                 btn.on('click', () => toggleStyle(style, axis.type, btn));
-                btn.on('contextmenu', (e) => { e.preventDefault(); alert(`[우클릭 감지됨]\n현재 "${style.name}" 데이터가 선택되었습니다. 에디터 기능은 추후 확장 가능합니다.`); });
                 btnContainer.append(btn);
             });
 
@@ -96,12 +93,11 @@ function renderModalContent(modal) {
             container.append(axisDiv);
         });
     } else {
-        container.append(`<p style="color:#ff6666;">데이터를 불러오지 못했습니다. data.json 파일을 확인해주세요.</p>`);
+        container.append(`<p style="color:#ff6666;">데이터를 불러오지 못했습니다.</p>`);
     }
 
     modal.append(container);
 
-    // 실시간 프리뷰 영역
     const previewContainer = $(`<div id="style-preview-container" style="margin-top:20px; padding:15px; background:rgba(0,0,0,0.4); border:1px dashed #777; border-radius:8px;">
         <h4 style="margin-top:0; color:#88ccff;">🔍 실시간 프롬프트 프리뷰</h4>
         <div id="style-combinator-preview" style="max-height:150px; overflow-y:auto; white-space:pre-wrap; font-family:monospace; color:#00ffcc; font-size:0.85em;">선택된 문체가 없습니다.</div>
@@ -144,7 +140,7 @@ function checkCombinationRules() {
                 return found && found.axis === axis.id;
             });
             if (stylesInAxis.length > 1) {
-                warningMsg.push(`🟡 주의: [${axis.name}] 축에서 ${stylesInAxis.length}개가 선택되었습니다. 하나를 메인으로 설계하세요.`);
+                warningMsg.push(`🟡 주의: [${axis.name}] 축에서 ${stylesInAxis.length}개가 선택되었습니다.`);
             }
         });
     }
@@ -187,14 +183,13 @@ function updateActiveSummary() {
     $('#style-combinator-active-summary').text(text);
 }
 
-// 초기화 시작
 jQuery(async () => {
-    // 1. CSS 파일 동적 적용 (자동 경로)
+    // CSS 적용
     if ($(`link[href="${extensionUrl}/style.css"]`).length === 0) {
         $('head').append(`<link rel="stylesheet" href="${extensionUrl}/style.css">`);
     }
 
-    // 2. HTML 로드해서 확장 패널에 붙이기 (자동 경로)
+    // HTML 로드 및 올바른 위치(#extensions_settings)에 추가
     try {
         const html = await $.get(`${extensionUrl}/index.html`);
         $('#extensions_settings').append(html);
