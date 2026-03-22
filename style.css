@@ -1,75 +1,28 @@
 #style-combinator-modal-overlay {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.75);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.75); z-index: 9999;
+    display: flex; justify-content: center; align-items: center;
 }
-
 #style-combinator-modal {
-    background: #1e1e1e;
-    padding: 25px;
-    border-radius: 12px;
-    width: 90%; max-width: 900px;
-    max-height: 85vh;
-    overflow-y: auto;
-    border: 1px solid #555;
-    position: relative;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-    color: #eee;
+    background: #1e1e1e; padding: 25px; border-radius: 12px;
+    width: 90%; max-width: 900px; max-height: 85vh; overflow-y: auto;
+    border: 1px solid #555; position: relative; color: #eee;
 }
-
 #style-combinator-modal-close {
-    position: absolute;
-    top: 15px; right: 20px;
-    background: none; border: none;
-    color: #fff; font-size: 28px;
-    cursor: pointer;
-    transition: 0.2s;
+    position: absolute; top: 15px; right: 20px;
+    background: none; border: none; color: #fff; font-size: 28px; cursor: pointer;
 }
-
-#style-combinator-modal-close:hover {
-    color: #ff6666;
-}
-
 .style-axis {
-    margin-bottom: 15px;
-    border-left: 3px solid #ffcc00;
-    padding-left: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    padding-top: 5px; padding-bottom: 5px;
+    margin-bottom: 15px; border-left: 3px solid #ffcc00;
+    padding-left: 12px; background: rgba(255, 255, 255, 0.03); padding: 5px 12px;
 }
-
-.style-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 8px;
-}
-
+.style-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .style-toggle {
-    opacity: 0.6;
-    transition: all 0.2s ease-in-out;
-    cursor: pointer;
-    padding: 6px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    background: #222;
-    color: #ccc;
+    opacity: 0.6; cursor: pointer; padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 4px;
+    background: #222; color: #ccc; transition: 0.2s;
 }
-
-.style-toggle:hover {
-    opacity: 0.9;
-    background: #333;
-}
-
 .style-toggle.active_style {
-    opacity: 1;
-    background-color: #ffcc00;
-    color: #111;
-    font-weight: bold;
-    border: 1px solid #ffcc00;
+    opacity: 1; background-color: #ffcc00; color: #111;
+    font-weight: bold; border: 1px solid #ffcc00;
 }
