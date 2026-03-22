@@ -622,8 +622,8 @@ function analyzeCombination() {
     const hasFormat = active.some(id => AXIS_FORMAT.includes(id));
     const hasWorld  = active.some(id => AXIS_WORLD.includes(id));
     const hints = [];
-    if (!hasFormat) hints.push('형식 생략 = 기본 3인칭');
-    if (!hasWorld)  hints.push('세계관 생략 = 현대 한국');
+    if (!hasFormat) hints.push('형식: 톤(베이스)의 기본 형식 적용');
+    if (!hasWorld)  hints.push('세계관: 캐릭터 월드인포 기본 적용');
     if (hints.length > 0) {
         messages.push(`<div class="sc-analysis-msg sc-msg-hint">💡 ${hints.join(' / ')}</div>`);
     }
@@ -674,16 +674,24 @@ function updatePromptInjection() {
         const worldStyles  = selected.filter(s => AXIS_WORLD.includes(s.id));
         const modeStyles   = selected.filter(s => AXIS_MODE.includes(s.id));
 
-        // 최종 모듈 맵 (MODULE 번호 → { source, axis, content })
+        // 최종 모듈 맵: MODULE 번호 → 배열 of { source, axis, role, content }
+        // role: 'base' | 'secondary' | 'overlay'
         let finalModules = {};
         let selfChecks = [];   // MODULE_8 병합용
-        let modeBlocks = [];   // 모드 전문(preamble) + 전체 payload를 최상단에 추가
+        let modeBlocks = [];   // 모드 payload를 최상단에 추가
         let basePreamble = ''; // 톤(베이스)의 전문
 
-        // STEP 1: 톤 = 베이스 (MODULE_1~7 전부를 기본값으로)
-        toneStyles.forEach(s => {
+        // 헬퍼: 모듈 추가
+        function addModule(num, source, axis, role, content) {
+            if (!finalModules[num]) finalModules[num] = [];
+            finalModules[num].push({ source, axis, role, content });
+        }
+
+        // STEP 1: 톤 = 베이스 (MODULE_1~7 전부)
+        toneStyles.forEach((s, idx) => {
             const { modules, preamble } = parseModules(s.prompt_payload);
             if (preamble && !basePreamble) basePreamble = preamble;
+            const role = idx === 0 ? 'base' : 'secondary';
             const hasParsedModules = Object.keys(modules).length > 0;
             if (hasParsedModules) {
                 Object.entries(modules).forEach(([num, content]) => {
@@ -691,56 +699,55 @@ function updatePromptInjection() {
                     if (num === 8) {
                         selfChecks.push({ source: s.id, content });
                     } else {
-                        finalModules[num] = { source: s.id, axis: 'II', content };
+                        addModule(num, s.id, 'II', role, content);
                     }
                 });
             } else {
-                // 모듈 태그가 없는 경우: 폴백으로 전체 payload를 MODULE_1에 배치
-                finalModules[1] = { source: s.id, axis: 'II', content: s.prompt_payload };
+                addModule(1, s.id, 'II', role, s.prompt_payload);
             }
         });
 
-        // STEP 2: 관계/장르 → MODULE_1(VOICE) + MODULE_4(CAUSALITY) 덮어씌움
+        // STEP 2: 관계/장르 → MODULE_1(VOICE) + MODULE_4(CAUSALITY) (overlay)
         genreStyles.forEach(s => {
             const { modules } = parseModules(s.prompt_payload);
             const hasParsedModules = Object.keys(modules).length > 0;
             if (hasParsedModules) {
-                if (modules[1]) finalModules[1] = { source: s.id, axis: 'III', content: modules[1] };
-                if (modules[4]) finalModules[4] = { source: s.id, axis: 'III', content: modules[4] };
+                if (modules[1]) addModule(1, s.id, 'III', 'overlay', modules[1]);
+                if (modules[4]) addModule(4, s.id, 'III', 'overlay', modules[4]);
                 if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
             } else {
-                finalModules[1] = { source: s.id, axis: 'III', content: s.prompt_payload };
+                addModule(1, s.id, 'III', 'overlay', s.prompt_payload);
             }
         });
 
-        // STEP 3: 형식 → MODULE_2(PROSE) + MODULE_7(FORMATTING) 덮어씌움
+        // STEP 3: 형식 → MODULE_2(PROSE) + MODULE_7(FORMATTING) (overlay)
         formatStyles.forEach(s => {
             const { modules } = parseModules(s.prompt_payload);
             const hasParsedModules = Object.keys(modules).length > 0;
             if (hasParsedModules) {
-                if (modules[2]) finalModules[2] = { source: s.id, axis: 'I', content: modules[2] };
-                if (modules[7]) finalModules[7] = { source: s.id, axis: 'I', content: modules[7] };
+                if (modules[2]) addModule(2, s.id, 'I', 'overlay', modules[2]);
+                if (modules[7]) addModule(7, s.id, 'I', 'overlay', modules[7]);
                 if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
             } else {
-                finalModules[2] = { source: s.id, axis: 'I', content: s.prompt_payload };
+                addModule(2, s.id, 'I', 'overlay', s.prompt_payload);
             }
         });
 
-        // STEP 4: 세계관 → MODULE_1 + MODULE_3 + MODULE_6 덮어씌움
+        // STEP 4: 세계관 → MODULE_1 + MODULE_3 + MODULE_6 (overlay)
         worldStyles.forEach(s => {
             const { modules } = parseModules(s.prompt_payload);
             const hasParsedModules = Object.keys(modules).length > 0;
             if (hasParsedModules) {
-                if (modules[1]) finalModules[1] = { source: s.id, axis: 'IV', content: modules[1] };
-                if (modules[3]) finalModules[3] = { source: s.id, axis: 'IV', content: modules[3] };
-                if (modules[6]) finalModules[6] = { source: s.id, axis: 'IV', content: modules[6] };
+                if (modules[1]) addModule(1, s.id, 'IV', 'overlay', modules[1]);
+                if (modules[3]) addModule(3, s.id, 'IV', 'overlay', modules[3]);
+                if (modules[6]) addModule(6, s.id, 'IV', 'overlay', modules[6]);
                 if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
             } else {
-                finalModules[3] = { source: s.id, axis: 'IV', content: s.prompt_payload };
+                addModule(3, s.id, 'IV', 'overlay', s.prompt_payload);
             }
         });
 
-        // STEP 5: 모드 → 기존 모듈 대체 없이 최상단에 추가
+        // STEP 5: 모드 → 최상단 추가
         modeStyles.forEach(s => {
             const { modules } = parseModules(s.prompt_payload);
             modeBlocks.push(s.prompt_payload);
@@ -750,10 +757,11 @@ function updatePromptInjection() {
         // ── 최종 프롬프트 조립 ──
         finalPrompt = '### [COMBINED LITERARY ROLEPLAY ENGINE]\n\n';
 
-        // 빌드 정보 & 충돌 해결 규칙
         finalPrompt += '## BUILD ORDER & PRIORITY\n';
         finalPrompt += '충돌 시 우선순위: 모드(Ⅴ) > 관계/장르(Ⅲ) > 톤(Ⅱ) > 형식(Ⅰ) > 세계관(Ⅳ)\n';
-        finalPrompt += 'Supreme Rule: 캐릭터 진실성이 모든 것 위에 있습니다.\n\n';
+        finalPrompt += 'Supreme Rule: 캐릭터 진실성이 모든 것 위에 있습니다.\n';
+        finalPrompt += '같은 축에서 복수 선택 시: 먼저 선택된 것이 기본(BASE), 나중 것이 보조(SECONDARY).\n';
+        finalPrompt += '서로 다른 축의 같은 모듈이 충돌하면, 우선순위가 높은 축의 규칙을 따르되 다른 축의 고유한 규칙도 가능한 한 반영합니다.\n\n';
 
         finalPrompt += '## CONFLICT RESOLUTION\n';
         finalPrompt += '- 비유 허용/금지 충돌 → 관계/장르 우선\n';
@@ -764,9 +772,9 @@ function updatePromptInjection() {
         finalPrompt += '- 문단 길이 → 긴 쪽 상한, 짧은 쪽 하한\n';
         finalPrompt += '- 대사 길이 → 짧은 쪽 채택\n\n';
 
-        // 모드 레이어 (최상단, 기존 모듈 대체 없음)
+        // 모드 레이어 (최상단)
         if (modeBlocks.length > 0) {
-            finalPrompt += '## SUPREME LAYER — MODE (최우선 윤리/감각 프레임워크)\n';
+            finalPrompt += '## SUPREME LAYER — MODE\n';
             modeBlocks.forEach(block => {
                 finalPrompt += block + '\n\n';
             });
@@ -774,21 +782,29 @@ function updatePromptInjection() {
 
         // 베이스(톤)의 전문 (ROLE_AND_PERSONA / CORE_DIRECTIVES)
         if (basePreamble) {
-            finalPrompt += '## BASE PREAMBLE (톤 기반 역할/지침)\n';
+            finalPrompt += '## BASE PREAMBLE\n';
             finalPrompt += basePreamble + '\n\n';
         }
 
-        // MODULE_1~7: 오버라이드 완료된 최종본 순서대로 출력
+        // MODULE_1~7 순서대로 출력 (같은 번호에 복수 출처 있으면 모두 포함)
         const MODULE_NAMES = {
             1: 'VOICE', 2: 'PROSE', 3: 'NPC_COGNITIVE_MODEL',
             4: 'CAUSALITY', 5: 'DIALOGUE', 6: 'SPECIFICITY', 7: 'FORMATTING'
         };
+        const ROLE_LABELS = { base: 'BASE', secondary: 'SECONDARY', overlay: 'OVERLAY' };
+        const AXIS_LABELS = { 'I': '형식', 'II': '톤', 'III': '관계/장르', 'IV': '세계관', 'V': '모드' };
+
         for (let i = 1; i <= 7; i++) {
-            if (finalModules[i]) {
-                const m = finalModules[i];
-                finalPrompt += `## MODULE_${i}: ${MODULE_NAMES[i]} (from ${m.source}, Axis ${m.axis})\n`;
-                finalPrompt += m.content + '\n\n';
-            }
+            const entries = finalModules[i];
+            if (!entries || entries.length === 0) continue;
+
+            finalPrompt += `## MODULE_${i}: ${MODULE_NAMES[i]}\n\n`;
+            entries.forEach(entry => {
+                const roleLabel = ROLE_LABELS[entry.role] || 'OVERLAY';
+                const axisLabel = AXIS_LABELS[entry.axis] || entry.axis;
+                finalPrompt += `### ${roleLabel} (from ${entry.source}, ${axisLabel})\n`;
+                finalPrompt += entry.content + '\n\n';
+            });
         }
 
         // MODULE_8: 모든 선택 버전의 SELF_CHECK 병합

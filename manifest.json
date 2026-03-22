@@ -1,7 +1,7 @@
 {
     "name": "ascde",
     "display_name": "Style Combinator",
-    "version": "4.1.0",
+    "version": "3.2.0",
     "description": "문체 조합 매뉴얼 기반 프롬프트 생성 확장",
     "author": "User",
     "js": "index.js",
