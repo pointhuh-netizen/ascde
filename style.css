@@ -1,0 +1,69 @@
+.style-combinator-ui {
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.style-axis {
+    margin-bottom: 15px;
+    border-left: 3px solid #ffcc00;
+    padding-left: 10px;
+}
+
+.style-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.style-toggle {
+    opacity: 0.6;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.style-toggle:hover {
+    opacity: 0.8;
+}
+
+.style-toggle.active_style {
+    opacity: 1;
+    background-color: #ffcc00;
+    color: #111;
+    font-weight: bold;
+    border: 1px solid #ffcc00;
+}
+
+.style-editor-ui {
+    margin-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 15px;
+}
+
+.style-editor-ui input, 
+.style-editor-ui select, 
+.style-editor-ui textarea {
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 5px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border: 1px solid #555;
+}
+
+#style-preview-container {
+    margin-top: 15px;
+    padding: 10px;
+    background: rgba(0,0,0,0.4);
+    border: 1px dashed #777;
+}
+
+#style-combinator-preview {
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #00ffcc;
+}
