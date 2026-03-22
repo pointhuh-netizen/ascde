@@ -8,9 +8,12 @@ let activeStyles = new Set();
 
 // 데이터 로드 (설정 또는 data.json에서)
 async function loadData() {
+    if (!extension_settings[EXTENSION_NAME]) {
+        extension_settings[EXTENSION_NAME] = {};
+    }
     const settings = extension_settings[EXTENSION_NAME];
 
-    if (settings && settings.customData) {
+    if (settings.customData) {
         styleData = settings.customData;
     } else {
         try {
@@ -29,7 +32,7 @@ async function loadData() {
     }
 
     // 저장된 activeStyles 복원
-    if (settings && Array.isArray(settings.activeStyles)) {
+    if (Array.isArray(settings.activeStyles)) {
         activeStyles = new Set(settings.activeStyles);
     }
 }
@@ -365,17 +368,32 @@ function persistDataAndRefresh() {
 
 // 초기화
 jQuery(async () => {
+    // settings 객체 초기화 (최초 로드 시 undefined 방지)
+    extension_settings[EXTENSION_NAME] = extension_settings[EXTENSION_NAME] || {};
+
     try {
         const settingsHtml = await $.get(`/${extensionFolderPath}/index.html`);
-        $('#extensions_settings2').append(settingsHtml);
+        $('#extensions_settings').append(settingsHtml);
     } catch (error) {
         console.error(`[Style Combinator] UI HTML 로드 실패:`, error);
         return;
     }
 
+    // 이벤트 바인딩 (HTML이 DOM에 추가된 직후)
     $('#btn-open-style-combinator').on('click', openModal);
 
+    // 데이터 로드 및 상태 복원
     await loadData();
-    updatePromptInjection(); // 저장된 상태 복원 후 프롬프트 주입
-    updateActiveSummary();   // 패널 요약 업데이트
+
+    // 초기 프롬프트 주입 (빈 문자열로 슬롯 등록)
+    if (typeof setExtensionPrompt === 'function') {
+        setExtensionPrompt(EXTENSION_NAME, '', extension_prompt_types.IN_PROMPT, 0);
+    }
+
+    // 저장된 상태가 있으면 프롬프트 복원
+    if (activeStyles.size > 0) {
+        updatePromptInjection();
+    }
+
+    updateActiveSummary();
 });
