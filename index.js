@@ -1,8 +1,6 @@
-import { extension_settings, setExtensionPrompt, extension_prompt_types, saveSettingsExtension } from '../../../extensions.js';
+import { extension_settings, getContext, setExtensionPrompt, extension_prompt_types } from '../../../extensions.js';
 
 const EXTENSION_NAME = 'ascde';
-
-// 💡 마법의 코드: 확장이 어디에 깔리든 자기 폴더 주소를 알아서 찾아냅니다.
 const extensionUrl = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
 
 let styleData = { axes: [], rules: {}, recommendations: [], styles: [] };
@@ -12,21 +10,16 @@ async function loadData() {
     if (!extension_settings[EXTENSION_NAME]) {
         extension_settings[EXTENSION_NAME] = {};
     }
+
     const settings = extension_settings[EXTENSION_NAME];
 
-    if (settings.customData) {
-        styleData = settings.customData;
-    } else {
-        try {
-            const response = await fetch(`${extensionUrl}/data.json`);
-            if (response.ok) {
-                styleData = await response.json();
-                extension_settings[EXTENSION_NAME].customData = styleData;
-                if (typeof saveSettingsExtension === 'function') saveSettingsExtension();
-            }
-        } catch (error) {
-            console.error(`[Style Combinator] data.json 로드 실패:`, error);
+    try {
+        const response = await fetch(`${extensionUrl}/data.json`);
+        if (response.ok) {
+            styleData = await response.json();
         }
+    } catch (error) {
+        console.error(`[ascde] data.json 로드 실패:`, error);
     }
 
     if (Array.isArray(settings.activeStyles)) {
@@ -36,7 +29,10 @@ async function loadData() {
 
 function saveActiveStyles() {
     extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
-    if (typeof saveSettingsExtension === 'function') saveSettingsExtension();
+    const context = getContext();
+    if (context && typeof context.saveSettings === 'function') {
+        context.saveSettings();
+    }
 }
 
 function openModal() {
@@ -80,7 +76,7 @@ function renderModalContent(modal) {
             stylesInAxis.forEach(style => {
                 const isActive = activeStyles.has(style.id) ? 'active_style' : '';
                 const btn = $(`
-                    <button class="style-toggle ${isActive}" data-id="${style.id}" title="${style.description || ''}">
+                    <button class="style-toggle ${isActive}" data-id="${style.id}">
                         ${style.id}. ${style.name}
                     </button>
                 `);
@@ -93,7 +89,7 @@ function renderModalContent(modal) {
             container.append(axisDiv);
         });
     } else {
-        container.append(`<p style="color:#ff6666;">데이터를 불러오지 못했습니다.</p>`);
+        container.append(`<p style="color:#ff6666;">데이터를 불러오지 못했습니다. data.json을 확인하세요.</p>`);
     }
 
     modal.append(container);
@@ -134,7 +130,7 @@ function checkCombinationRules() {
 
     if (styleData.axes) {
         styleData.axes.forEach(axis => {
-            if (axis.id === 'V') return; 
+            if (axis.id === 'V') return;
             const stylesInAxis = activeArr.filter(id => {
                 const found = styleData.styles.find(s => s.id === id);
                 return found && found.axis === axis.id;
@@ -184,17 +180,15 @@ function updateActiveSummary() {
 }
 
 jQuery(async () => {
-    // CSS 적용
     if ($(`link[href="${extensionUrl}/style.css"]`).length === 0) {
         $('head').append(`<link rel="stylesheet" href="${extensionUrl}/style.css">`);
     }
 
-    // HTML 로드 및 올바른 위치(#extensions_settings)에 추가
     try {
         const html = await $.get(`${extensionUrl}/index.html`);
-        $('#extensions_settings').append(html); // 여기가 무조건 이래야 뜹니다!
+        $('#extensions_settings').append(html);
     } catch (e) {
-        console.error('[Style Combinator] index.html 로드 실패', e);
+        console.error('[ascde] index.html 로드 실패', e);
         return;
     }
 
