@@ -132,3 +132,48 @@
 .rec-apply-btn:hover {
     background: rgba(255, 204, 0, 0.2);
 }
+
+/* 모달 오버레이 */
+#style-combinator-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 모달 본체 */
+#style-combinator-modal {
+    position: relative;
+    width: 85vw;
+    max-width: 900px;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: var(--SmartThemeBlurTintColor, #1a1a2e);
+    border: 1px solid rgba(255, 204, 0, 0.3);
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 0 30px rgba(255, 204, 0, 0.1);
+}
+
+/* 닫기 버튼 */
+#style-combinator-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 10000;
+}
+
+#style-combinator-modal-close:hover {
+    color: #ffcc00;
+}
