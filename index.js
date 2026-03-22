@@ -151,6 +151,38 @@ const PRESET_RECOMMENDATIONS = {
     ],
 };
 
+// =====================================================================
+// § 2-b. 시너지 점수 테이블 (문제 명세 §시너지 조합표)
+// =====================================================================
+// Ⅱ×Ⅲ: 톤 × 관계/장르  (1~5점)
+const SYNERGY_TABLE_II_III = {
+    C:  { U: 5, X: 2, AA: 4, AB: 2, H: 1, AE: 1, AJ: 2 },
+    F:  { U: 4, X: 5, AA: 2, AB: 3, H: 5, AE: 3, AJ: 5 },
+    G:  { U: 5, X: 3, AA: 5, AB: 4, H: 3, AE: 4, AJ: 3 },
+    T:  { U: 3, X: 4, AA: 2, AB: 3, H: 4, AE: 5, AJ: 4 },
+    AD: { U: 3, X: 2, AA: 3, AB: 1, H: 2, AE: 2, AJ: 3 },
+    AL: { U: 4, X: 3, AA: 3, AB: 4, H: 3, AE: 5, AJ: 2 },
+    AR: { U: 3, X: 1, AA: 5, AB: 2, H: 1, AE: 2, AJ: 1 },
+};
+
+// Ⅱ×Ⅳ: 톤 × 세계관/구조  (1~5점)
+const SYNERGY_TABLE_II_IV = {
+    B:  { V: 4, AI: 3, AF: 5, AG: 5, AP: 4, AQ: 3, AU: 4, AT: 5 },
+    C:  { V: 3, AI: 2, AF: 3, AG: 4, AP: 5, AQ: 4, AU: 4, AT: 5 },
+    F:  { V: 4, AI: 5, AF: 4, AG: 4, AP: 3, AQ: 4, AU: 4, AT: 2 },
+    G:  { V: 5, AI: 4, AF: 3, AG: 3, AP: 4, AQ: 2, AU: 5, AT: 4 },
+    AD: { V: 4, AI: 3, AF: 4, AG: 5, AP: 5, AQ: 5, AU: 3, AT: 3 },
+};
+
+// 같은 축 2개 선택 규칙
+const SAME_AXIS_RULES = {
+    'I':   { possible: false, icon: '🔴', note: '형식은 배타적. 둘 중 하나만 선택하세요.' },
+    'II':  { possible: true,  icon: '🟡', note: '먼저 선택한 것을 기본, 나중 것을 보조로.' },
+    'III': { possible: true,  icon: '🟡', note: '관계 1개+장르 1개는 OK. 관계 2개는 충돌 위험.' },
+    'IV':  { possible: true,  icon: '🟡', note: '배경 1개+구조 1개는 OK.' },
+    'V':   { possible: true,  icon: '✅', note: '모드는 자유롭게 겹침 가능.' },
+};
+
 // ── 축 ID 분류 (조합 분석용) ──
 const AXIS_FORMAT = ['K', 'L', 'M', 'N', 'O', 'P', 'R', 'S'];
 const AXIS_TONE   = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'J', 'T', 'AD', 'AH', 'AL', 'AN', 'AR'];
@@ -513,14 +545,47 @@ function analyzeCombination() {
 
     let messages = [];
 
-    // 시너지 확인
+    // ── 시너지 테이블 점수 표시 (Ⅱ×Ⅲ, Ⅱ×Ⅳ) ──
+    const activeTones  = active.filter(id => AXIS_TONE.includes(id));
+    const activeGenres = active.filter(id => AXIS_GENRE.includes(id));
+    const activeWorlds = active.filter(id => AXIS_WORLD.includes(id));
+
+    const renderStars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+
+    activeTones.forEach(tone => {
+        activeGenres.forEach(genre => {
+            const score = SYNERGY_TABLE_II_III[tone] && SYNERGY_TABLE_II_III[tone][genre];
+            if (score !== undefined) {
+                const cls = score >= 4 ? 'sc-msg-synergy' : score >= 3 ? 'sc-msg-hint' : 'sc-msg-warn';
+                messages.push(`<div class="sc-analysis-msg ${cls}">${renderStars(score)} ${tone}(${getStyleName(tone)}) × ${genre}(${getStyleName(genre)})</div>`);
+            }
+        });
+        activeWorlds.forEach(world => {
+            const score = SYNERGY_TABLE_II_IV[tone] && SYNERGY_TABLE_II_IV[tone][world];
+            if (score !== undefined) {
+                const cls = score >= 4 ? 'sc-msg-synergy' : score >= 3 ? 'sc-msg-hint' : 'sc-msg-warn';
+                messages.push(`<div class="sc-analysis-msg ${cls}">${renderStars(score)} ${tone}(${getStyleName(tone)}) × ${world}(${getStyleName(world)})</div>`);
+            }
+        });
+    });
+
+    // ── 알려진 시너지 조합 확인 (테이블 미포함 조합) ──
     SYNERGY_COMBOS.forEach(s => {
         if (s.ids.every(id => active.includes(id))) {
-            messages.push(`<div class="sc-analysis-msg sc-msg-synergy">★★★★★ 시너지: ${s.ids.join('+')} — ${s.description}</div>`);
+            // 이미 테이블에서 표시된 쌍은 건너뜀
+            const alreadyShown = s.ids.length === 2 && (
+                (AXIS_TONE.includes(s.ids[0]) && AXIS_GENRE.includes(s.ids[1])) ||
+                (AXIS_TONE.includes(s.ids[1]) && AXIS_GENRE.includes(s.ids[0])) ||
+                (AXIS_TONE.includes(s.ids[0]) && AXIS_WORLD.includes(s.ids[1])) ||
+                (AXIS_TONE.includes(s.ids[1]) && AXIS_WORLD.includes(s.ids[0]))
+            );
+            if (!alreadyShown) {
+                messages.push(`<div class="sc-analysis-msg sc-msg-synergy">★★★★★ 시너지: ${s.ids.join('+')} — ${s.description}</div>`);
+            }
         }
     });
 
-    // 비추천 확인 (마찰인 경우 마찰 우선 — O(1) 조회)
+    // ── 비추천 확인 (마찰인 경우 마찰 우선 — O(1) 조회) ──
     NON_RECOMMENDED.forEach(b => {
         if (b.ids.every(id => active.includes(id))) {
             const sig = [...b.ids].sort().join('|');
@@ -530,23 +595,25 @@ function analyzeCombination() {
         }
     });
 
-    // 의도적 마찰 확인
+    // ── 의도적 마찰 확인 ──
     FRICTION_COMBOS.forEach(f => {
         if (f.ids.every(id => active.includes(id))) {
             messages.push(`<div class="sc-analysis-msg sc-msg-friction">⚡ 의도적 마찰: ${f.ids.join('+')} — ${f.effect}</div>`);
         }
     });
 
-    // 같은 축 중복 경고
+    // ── 같은 축 중복 경고 (축별 규칙 적용) ──
     if (styleData.axes) {
         styleData.axes.forEach(axis => {
-            if (axis.id === 'V') return;
+            const rule = SAME_AXIS_RULES[axis.id];
+            if (!rule || (rule.possible && axis.id === 'V')) return; // 모드는 항상 OK
             const inAxis = active.filter(id => {
                 const found = styleData.styles.find(s => s.id === id);
                 return found && found.axis === axis.id;
             });
             if (inAxis.length > 1) {
-                messages.push(`<div class="sc-analysis-msg sc-msg-warn">🟡 [${axis.name}] 축에서 ${inAxis.length}개 선택됨</div>`);
+                const cls = rule.possible ? 'sc-msg-warn' : 'sc-msg-bad';
+                messages.push(`<div class="sc-analysis-msg ${cls}">${rule.icon} [${axis.name}] 축에서 ${inAxis.length}개 선택 — ${rule.note}</div>`);
             }
         });
     }
