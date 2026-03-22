@@ -1,5 +1,7 @@
-import { extension_settings, getContext, setExtensionPrompt, extension_prompt_types } from '../../../extensions.js';
-import { saveSettingsDebounced } from '../../../../script.js';
+// ✅ extensions.js에서는 extension_settings, getContext만
+import { extension_settings, getContext } from '../../../extensions.js';
+// ✅ script.js에서 setExtensionPrompt, extension_prompt_types, saveSettingsDebounced
+import { saveSettingsDebounced, setExtensionPrompt, extension_prompt_types } from '../../../../script.js';
 
 const EXTENSION_NAME = 'ascde';
 const extensionUrl = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
