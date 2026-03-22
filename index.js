@@ -638,6 +638,10 @@ function analyzeCombination() {
 // § 10. 프롬프트 주입 & 요약 업데이트
 // =====================================================================
 
+// 섹션 dedup 유사도 임계값
+const SIMILARITY_THRESHOLD_HIGH = 0.7; // 이 이상이면 공통 줄만 남기고 차이점 태그 처리
+const SIMILARITY_THRESHOLD_LOW  = 0.3; // 이 이상이면 BASE/OVERLAY 태그 구분, 미만이면 둘 다 그대로
+
 /**
  * prompt_payload 문자열에서 MODULE_1~8 블록을 파싱합니다.
  * 각 블록은 `## <MODULE_N: ...>` 또는 `<MODULE_N: ...>` 으로 시작하고
@@ -659,6 +663,181 @@ function parseModules(promptPayload) {
     const preamble = firstModuleIdx > 0 ? promptPayload.slice(0, firstModuleIdx).trim() : '';
 
     return { modules, preamble };
+}
+
+/**
+ * 마크다운 `###` 헤딩으로 텍스트를 섹션 배열로 분리합니다.
+ * @param {string} text
+ * @returns {Array.<{heading: string, body: string}>}
+ */
+function parseSections(text) {
+    const sections = [];
+    const regex = /^###\s+(.+)$/gm;
+    let match;
+    const positions = [];
+
+    while ((match = regex.exec(text)) !== null) {
+        positions.push({ heading: match[1].trim(), start: match.index, headEnd: regex.lastIndex });
+    }
+
+    positions.forEach((pos, i) => {
+        const bodyStart = pos.headEnd;
+        const bodyEnd = i + 1 < positions.length ? positions[i + 1].start : text.length;
+        sections.push({
+            heading: pos.heading,
+            body: text.slice(bodyStart, bodyEnd).trim()
+        });
+    });
+
+    // ### 헤딩이 없는 텍스트 앞부분도 캡처 (preamble)
+    if (positions.length > 0 && positions[0].start > 0) {
+        const preamble = text.slice(0, positions[0].start).trim();
+        if (preamble) {
+            sections.unshift({ heading: '__preamble__', body: preamble });
+        }
+    } else if (positions.length === 0) {
+        // ### 헤딩이 전혀 없으면 전체를 하나의 섹션으로
+        sections.push({ heading: '__full__', body: text.trim() });
+    }
+
+    return sections;
+}
+
+/**
+ * 두 섹션 body의 줄 단위 Jaccard 유사도를 반환합니다.
+ * @param {string} bodyA
+ * @param {string} bodyB
+ * @returns {number} 0~1
+ */
+function sectionSimilarity(bodyA, bodyB) {
+    const linesA = new Set(bodyA.split('\n').map(l => l.trim()).filter(Boolean));
+    const linesB = new Set(bodyB.split('\n').map(l => l.trim()).filter(Boolean));
+
+    let intersection = 0;
+    linesA.forEach(line => { if (linesB.has(line)) intersection++; });
+
+    const union = new Set([...linesA, ...linesB]).size;
+    return union === 0 ? 1 : intersection / union;
+}
+
+/**
+ * 두 섹션 body의 공통 줄과 각각에만 있는 줄을 분리합니다.
+ * @param {string} bodyA
+ * @param {string} bodyB
+ * @returns {{ common: string[], onlyBase: string[], onlyOverlay: string[] }}
+ */
+function diffLines(bodyA, bodyB) {
+    const linesA = bodyA.split('\n').map(l => l.trim()).filter(Boolean);
+    const linesB = bodyB.split('\n').map(l => l.trim()).filter(Boolean);
+    const setB = new Set(linesB);
+    const setA = new Set(linesA);
+
+    return {
+        common:      Array.from(new Set(linesA.filter(l => setB.has(l)))),
+        onlyBase:    linesA.filter(l => !setB.has(l)),
+        onlyOverlay: linesB.filter(l => !setA.has(l)),
+    };
+}
+
+/**
+ * overlay 섹션 배열에서 baseSec과 매칭되는 섹션을 찾습니다.
+ * 정확한 헤딩 → 헤딩 번호 순으로 매칭합니다.
+ * @param {{heading: string, body: string}} baseSec
+ * @param {Array.<{heading: string, body: string}>} overlaySections
+ * @returns {{heading: string, body: string}|null}
+ */
+function findMatchingSection(baseSec, overlaySections) {
+    // 1. 정확한 헤딩 매칭
+    const exact = overlaySections.find(s => s.heading === baseSec.heading);
+    if (exact) return exact;
+
+    // 2. 헤딩 번호 매칭 (예: "1. 시점 구성" vs "1. 시점 설정")
+    const baseNum = baseSec.heading.match(/^(\d+)\./);
+    if (baseNum) {
+        const numMatch = overlaySections.find(s => {
+            const m = s.heading.match(/^(\d+)\./);
+            return m && m[1] === baseNum[1];
+        });
+        if (numMatch) return numMatch;
+    }
+
+    return null;
+}
+
+/**
+ * 같은 MODULE에 속하는 복수 entry의 내용을 섹션 단위 Jaccard dedup으로 병합합니다.
+ * @param {Array.<{source: string, axis: string, role: string, content: string}>} entries
+ * @returns {string}
+ */
+function deduplicateModuleSections(entries) {
+    if (entries.length <= 1) return entries[0]?.content || '';
+
+    // 각 entry를 섹션으로 파싱
+    const parsed = entries.map(e => ({
+        ...e,
+        sections: parseSections(e.content)
+    }));
+
+    const base = parsed[0];
+    const overlays = parsed.slice(1);
+    let result = '';
+
+    // 이미 매칭된 overlay 섹션 추적
+    const matchedOverlaySections = new Set();
+
+    base.sections.forEach(baseSec => {
+        if (baseSec.heading !== '__preamble__' && baseSec.heading !== '__full__') {
+            result += `### ${baseSec.heading}\n`;
+        }
+
+        let hasMatch = false;
+        overlays.forEach(ov => {
+            const match = findMatchingSection(baseSec, ov.sections);
+            if (match) {
+                hasMatch = true;
+                matchedOverlaySections.add(`${ov.source}::${match.heading}`);
+                const sim = sectionSimilarity(baseSec.body, match.body);
+
+                if (sim >= SIMILARITY_THRESHOLD_HIGH) {
+                    // Case A: 거의 같다 → 공통만 남기고 차이 추가
+                    const { common, onlyBase, onlyOverlay } = diffLines(baseSec.body, match.body);
+                    result += common.join('\n') + '\n';
+                    if (onlyBase.length > 0) {
+                        result += onlyBase.map(l => `[+${base.source}] ${l}`).join('\n') + '\n';
+                    }
+                    if (onlyOverlay.length > 0) {
+                        result += onlyOverlay.map(l => `[+${ov.source}] ${l}`).join('\n') + '\n';
+                    }
+                } else if (sim >= SIMILARITY_THRESHOLD_LOW) {
+                    // Case B: 부분 겹침 → 태그 구분
+                    result += `[BASE from ${base.source}]\n${baseSec.body}\n\n`;
+                    result += `[OVERLAY from ${ov.source}]\n${match.body}\n\n`;
+                } else {
+                    // Case C: 완전히 다름 → 둘 다
+                    result += `[from ${base.source}]\n` + baseSec.body + '\n\n';
+                    result += `### ${match.heading} [from ${ov.source}]\n`;
+                    result += match.body + '\n\n';
+                }
+            }
+        });
+
+        if (!hasMatch) {
+            result += baseSec.body + '\n\n';
+        }
+    });
+
+    // overlay에만 있는 섹션 추가
+    overlays.forEach(ov => {
+        ov.sections.forEach(ovSec => {
+            const key = `${ov.source}::${ovSec.heading}`;
+            if (!matchedOverlaySections.has(key) && ovSec.heading !== '__preamble__' && ovSec.heading !== '__full__') {
+                result += `### ${ovSec.heading} [+${ov.source}]\n`;
+                result += ovSec.body + '\n\n';
+            }
+        });
+    });
+
+    return result.trim();
 }
 
 function updatePromptInjection() {
@@ -791,20 +970,20 @@ function updatePromptInjection() {
             1: 'VOICE', 2: 'PROSE', 3: 'NPC_COGNITIVE_MODEL',
             4: 'CAUSALITY', 5: 'DIALOGUE', 6: 'SPECIFICITY', 7: 'FORMATTING'
         };
-        const ROLE_LABELS = { base: 'BASE', secondary: 'SECONDARY', overlay: 'OVERLAY' };
-        const AXIS_LABELS = { 'I': '형식', 'II': '톤', 'III': '관계/장르', 'IV': '세계관', 'V': '모드' };
 
         for (let i = 1; i <= 7; i++) {
             const entries = finalModules[i];
             if (!entries || entries.length === 0) continue;
 
             finalPrompt += `## MODULE_${i}: ${MODULE_NAMES[i]}\n\n`;
-            entries.forEach(entry => {
-                const roleLabel = ROLE_LABELS[entry.role] || 'OVERLAY';
-                const axisLabel = AXIS_LABELS[entry.axis] || entry.axis;
-                finalPrompt += `### ${roleLabel} (from ${entry.source}, ${axisLabel})\n`;
-                finalPrompt += entry.content + '\n\n';
-            });
+
+            if (entries.length === 1) {
+                // 단일 entry는 그대로
+                finalPrompt += entries[0].content + '\n\n';
+            } else {
+                // 복수 entry → dedup 적용
+                finalPrompt += deduplicateModuleSections(entries) + '\n\n';
+            }
         }
 
         // MODULE_8: 모든 선택 버전의 SELF_CHECK 병합
