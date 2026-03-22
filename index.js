@@ -637,6 +637,30 @@ function analyzeCombination() {
 // =====================================================================
 // § 10. 프롬프트 주입 & 요약 업데이트
 // =====================================================================
+
+/**
+ * prompt_payload 문자열에서 MODULE_1~8 블록을 파싱합니다.
+ * 각 블록은 `## <MODULE_N: ...>` 또는 `<MODULE_N: ...>` 으로 시작하고
+ * `</MODULE_N>` 으로 끝납니다.
+ * @param {string} promptPayload
+ * @returns {{ modules: Object.<number, string>, preamble: string }}
+ */
+function parseModules(promptPayload) {
+    const modules = {};
+    const regex = /(?:##\s*)?<MODULE_(\d+)[^>]*>[\s\S]*?<\/MODULE_\1>/g;
+    let match;
+    while ((match = regex.exec(promptPayload)) !== null) {
+        const num = parseInt(match[1]);
+        modules[num] = match[0];
+    }
+
+    // MODULE 태그 이전에 오는 ROLE_AND_PERSONA / CORE_DIRECTIVES 등의 전문(preamble) 추출
+    const firstModuleIdx = promptPayload.search(/(?:##\s*)?<MODULE_\d+/);
+    const preamble = firstModuleIdx > 0 ? promptPayload.slice(0, firstModuleIdx).trim() : '';
+
+    return { modules, preamble };
+}
+
 function updatePromptInjection() {
     const selected = Array.from(activeStyles)
         .map(id => styleData.styles.find(s => s.id === id))
@@ -644,22 +668,93 @@ function updatePromptInjection() {
 
     let finalPrompt = '';
     if (selected.length > 0) {
-        // 축별로 분류
         const toneStyles   = selected.filter(s => AXIS_TONE.includes(s.id));
         const genreStyles  = selected.filter(s => AXIS_GENRE.includes(s.id));
         const formatStyles = selected.filter(s => AXIS_FORMAT.includes(s.id));
         const worldStyles  = selected.filter(s => AXIS_WORLD.includes(s.id));
         const modeStyles   = selected.filter(s => AXIS_MODE.includes(s.id));
 
+        // 최종 모듈 맵 (MODULE 번호 → { source, axis, content })
+        let finalModules = {};
+        let selfChecks = [];   // MODULE_8 병합용
+        let modeBlocks = [];   // 모드 전문(preamble) + 전체 payload를 최상단에 추가
+        let basePreamble = ''; // 톤(베이스)의 전문
+
+        // STEP 1: 톤 = 베이스 (MODULE_1~7 전부를 기본값으로)
+        toneStyles.forEach(s => {
+            const { modules, preamble } = parseModules(s.prompt_payload);
+            if (preamble && !basePreamble) basePreamble = preamble;
+            const hasParsedModules = Object.keys(modules).length > 0;
+            if (hasParsedModules) {
+                Object.entries(modules).forEach(([num, content]) => {
+                    num = parseInt(num);
+                    if (num === 8) {
+                        selfChecks.push({ source: s.id, content });
+                    } else {
+                        finalModules[num] = { source: s.id, axis: 'II', content };
+                    }
+                });
+            } else {
+                // 모듈 태그가 없는 경우: 폴백으로 전체 payload를 MODULE_1에 배치
+                finalModules[1] = { source: s.id, axis: 'II', content: s.prompt_payload };
+            }
+        });
+
+        // STEP 2: 관계/장르 → MODULE_1(VOICE) + MODULE_4(CAUSALITY) 덮어씌움
+        genreStyles.forEach(s => {
+            const { modules } = parseModules(s.prompt_payload);
+            const hasParsedModules = Object.keys(modules).length > 0;
+            if (hasParsedModules) {
+                if (modules[1]) finalModules[1] = { source: s.id, axis: 'III', content: modules[1] };
+                if (modules[4]) finalModules[4] = { source: s.id, axis: 'III', content: modules[4] };
+                if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
+            } else {
+                finalModules[1] = { source: s.id, axis: 'III', content: s.prompt_payload };
+            }
+        });
+
+        // STEP 3: 형식 → MODULE_2(PROSE) + MODULE_7(FORMATTING) 덮어씌움
+        formatStyles.forEach(s => {
+            const { modules } = parseModules(s.prompt_payload);
+            const hasParsedModules = Object.keys(modules).length > 0;
+            if (hasParsedModules) {
+                if (modules[2]) finalModules[2] = { source: s.id, axis: 'I', content: modules[2] };
+                if (modules[7]) finalModules[7] = { source: s.id, axis: 'I', content: modules[7] };
+                if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
+            } else {
+                finalModules[2] = { source: s.id, axis: 'I', content: s.prompt_payload };
+            }
+        });
+
+        // STEP 4: 세계관 → MODULE_1 + MODULE_3 + MODULE_6 덮어씌움
+        worldStyles.forEach(s => {
+            const { modules } = parseModules(s.prompt_payload);
+            const hasParsedModules = Object.keys(modules).length > 0;
+            if (hasParsedModules) {
+                if (modules[1]) finalModules[1] = { source: s.id, axis: 'IV', content: modules[1] };
+                if (modules[3]) finalModules[3] = { source: s.id, axis: 'IV', content: modules[3] };
+                if (modules[6]) finalModules[6] = { source: s.id, axis: 'IV', content: modules[6] };
+                if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
+            } else {
+                finalModules[3] = { source: s.id, axis: 'IV', content: s.prompt_payload };
+            }
+        });
+
+        // STEP 5: 모드 → 기존 모듈 대체 없이 최상단에 추가
+        modeStyles.forEach(s => {
+            const { modules } = parseModules(s.prompt_payload);
+            modeBlocks.push(s.prompt_payload);
+            if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
+        });
+
+        // ── 최종 프롬프트 조립 ──
         finalPrompt = '### [COMBINED LITERARY ROLEPLAY ENGINE]\n\n';
 
-        // 빌드 순서 & 우선순위 헤더
+        // 빌드 정보 & 충돌 해결 규칙
         finalPrompt += '## BUILD ORDER & PRIORITY\n';
-        finalPrompt += '이 프롬프트는 축별 우선순위에 따라 구성되었습니다.\n';
         finalPrompt += '충돌 시 우선순위: 모드(Ⅴ) > 관계/장르(Ⅲ) > 톤(Ⅱ) > 형식(Ⅰ) > 세계관(Ⅳ)\n';
         finalPrompt += 'Supreme Rule: 캐릭터 진실성이 모든 것 위에 있습니다.\n\n';
 
-        // 충돌 해결 규칙
         finalPrompt += '## CONFLICT RESOLUTION\n';
         finalPrompt += '- 비유 허용/금지 충돌 → 관계/장르 우선\n';
         finalPrompt += '- 감정 명명 충돌 → 관계/장르 우선\n';
@@ -669,43 +764,46 @@ function updatePromptInjection() {
         finalPrompt += '- 문단 길이 → 긴 쪽 상한, 짧은 쪽 하한\n';
         finalPrompt += '- 대사 길이 → 짧은 쪽 채택\n\n';
 
-        // LAYER 1: 톤 (베이스)
-        if (toneStyles.length > 0) {
-            finalPrompt += '## LAYER 1 — BASE TONE (기본 골격)\n';
-            toneStyles.forEach(s => {
-                finalPrompt += `<MODULE_OVERLAY: AXIS_II | STYLE_${s.id} | PRIORITY=BASE>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
+        // 모드 레이어 (최상단, 기존 모듈 대체 없음)
+        if (modeBlocks.length > 0) {
+            finalPrompt += '## SUPREME LAYER — MODE (최우선 윤리/감각 프레임워크)\n';
+            modeBlocks.forEach(block => {
+                finalPrompt += block + '\n\n';
             });
         }
 
-        // LAYER 2: 관계/장르
-        if (genreStyles.length > 0) {
-            finalPrompt += '## LAYER 2 — GENRE OVERLAY (서사 방향)\n';
-            genreStyles.forEach(s => {
-                finalPrompt += `<MODULE_OVERLAY: AXIS_III | STYLE_${s.id} | PRIORITY=HIGH>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
+        // 베이스(톤)의 전문 (ROLE_AND_PERSONA / CORE_DIRECTIVES)
+        if (basePreamble) {
+            finalPrompt += '## BASE PREAMBLE (톤 기반 역할/지침)\n';
+            finalPrompt += basePreamble + '\n\n';
+        }
+
+        // MODULE_1~7: 오버라이드 완료된 최종본 순서대로 출력
+        const MODULE_NAMES = {
+            1: 'VOICE', 2: 'PROSE', 3: 'NPC_COGNITIVE_MODEL',
+            4: 'CAUSALITY', 5: 'DIALOGUE', 6: 'SPECIFICITY', 7: 'FORMATTING'
+        };
+        for (let i = 1; i <= 7; i++) {
+            if (finalModules[i]) {
+                const m = finalModules[i];
+                finalPrompt += `## MODULE_${i}: ${MODULE_NAMES[i]} (from ${m.source}, Axis ${m.axis})\n`;
+                finalPrompt += m.content + '\n\n';
+            }
+        }
+
+        // MODULE_8: 모든 선택 버전의 SELF_CHECK 병합
+        if (selfChecks.length > 0) {
+            finalPrompt += '## MODULE_8: MERGED SELF_CHECK\n';
+            selfChecks.forEach(sc => {
+                finalPrompt += `<!-- from ${sc.source} -->\n${sc.content}\n\n`;
             });
         }
 
-        // LAYER 3: 형식
-        if (formatStyles.length > 0) {
-            finalPrompt += '## LAYER 3 — FORMAT OVERLAY (문장 리듬)\n';
-            formatStyles.forEach(s => {
-                finalPrompt += `<MODULE_OVERLAY: AXIS_I | STYLE_${s.id} | PRIORITY=MEDIUM>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
-            });
-        }
-
-        // LAYER 4: 세계관
-        if (worldStyles.length > 0) {
-            finalPrompt += '## LAYER 4 — WORLD OVERLAY (세계관)\n';
-            worldStyles.forEach(s => {
-                finalPrompt += `<MODULE_OVERLAY: AXIS_IV | STYLE_${s.id} | PRIORITY=LOW>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
-            });
-        }
-
-        // LAYER 5: 모드 (최상단)
-        if (modeStyles.length > 0) {
-            finalPrompt += '## LAYER 5 — MODE (최우선 레이어)\n';
-            modeStyles.forEach(s => {
-                finalPrompt += `<MODULE_OVERLAY: AXIS_V | STYLE_${s.id} | PRIORITY=SUPREME>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
+        // 폴백: 톤도 없고 파싱된 모듈도 없는 경우 기존 레이어 방식으로 출력
+        if (toneStyles.length === 0 && Object.keys(finalModules).length === 0 && modeBlocks.length === 0) {
+            finalPrompt = '### [COMBINED LITERARY ROLEPLAY ENGINE]\n\n';
+            selected.forEach(s => {
+                finalPrompt += `<MODULE_OVERLAY: STYLE_${s.id}>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
             });
         }
     }
