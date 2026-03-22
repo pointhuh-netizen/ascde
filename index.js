@@ -1,4 +1,4 @@
-import { extension_settings, getContext, loadExtensionSettings, setExtensionPrompt, extension_prompt_types } from '../../../extensions.js';
+import { extension_settings, setExtensionPrompt, extension_prompt_types } from '../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 
 const EXTENSION_NAME = 'ascde';
