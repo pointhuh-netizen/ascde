@@ -1,6 +1,7 @@
-import { getContext, saveSettingsExtension, setExtensionPrompt, extension_prompt_types } from '../../extensions.js';
+import { getContext, saveSettingsExtension, setExtensionPrompt, extension_prompt_types } from '../../../extensions.js';
 
 const EXTENSION_NAME = 'style-combinator';
+const extensionFolderPath = `scripts/extensions/third-party/${EXTENSION_NAME}`;
 let styleData = { axes: [], rules: {}, recommendations: [], styles: [] };
 let activeStyles = new Set();
 
@@ -13,7 +14,7 @@ async function loadData() {
         styleData = settings.customData;
     } else {
         try {
-            const response = await fetch(`/scripts/extensions/third-party/${EXTENSION_NAME}/data.json`);
+            const response = await fetch(`/${extensionFolderPath}/data.json`);
             if (!response.ok) throw new Error('Network response was not ok');
             styleData = await response.json();
 
@@ -33,10 +34,33 @@ async function loadData() {
     }
 }
 
-// 메인 UI 렌더링
-function renderUI() {
-    $('#style-combinator-wrapper').remove();
-    const wrapper = $(`<div id="style-combinator-wrapper"></div>`);
+// 모달 열기
+function openModal() {
+    if ($('#style-combinator-modal-overlay').length > 0) return;
+
+    const overlay = $('<div id="style-combinator-modal-overlay"></div>');
+    const modal = $('<div id="style-combinator-modal"></div>');
+    const closeBtn = $('<button id="style-combinator-modal-close">&times;</button>');
+
+    closeBtn.on('click', closeModal);
+    overlay.on('click', (e) => {
+        if (e.target === overlay[0]) closeModal();
+    });
+
+    modal.append(closeBtn);
+    renderModalContent(modal);
+    overlay.append(modal);
+    $('body').append(overlay);
+}
+
+// 모달 닫기
+function closeModal() {
+    $('#style-combinator-modal-overlay').remove();
+    updateActiveSummary();
+}
+
+// 모달 내용 렌더링
+function renderModalContent(modal) {
     const container = $(`<div id="style-combinator-container" class="style-combinator-ui"></div>`);
     container.append(`<h3>문체 교차 조합 매뉴얼 (45 버전)</h3>`);
 
@@ -75,13 +99,22 @@ function renderUI() {
         container.append(axisDiv);
     });
 
-    wrapper.append(container);
-    $('#extensions_settings').append(wrapper);
+    modal.append(container);
 
-    renderPreviewUI(wrapper);
-    renderEditorUI(wrapper);
+    renderPreviewUI(modal);
+    renderEditorUI(modal);
     checkCombinationRules();
     updatePromptInjection();
+}
+
+// 패널 요약 업데이트
+function updateActiveSummary() {
+    const names = Array.from(activeStyles)
+        .map(id => styleData.styles.find(s => s.id === id))
+        .filter(Boolean)
+        .map(s => `${s.id}(${s.name})`);
+    const text = names.length > 0 ? `선택된 문체: ${names.join(', ')}` : '선택된 문체: 없음';
+    $('#style-combinator-active-summary').text(text);
 }
 
 // 추천 조합 패널 렌더링
@@ -181,6 +214,7 @@ function toggleStyle(style, axisType, btnElement) {
     saveActiveStyles();
     checkCombinationRules();
     updatePromptInjection();
+    updateActiveSummary();
 }
 
 // activeStyles를 extension_settings에 저장
@@ -315,7 +349,8 @@ function deleteStyle() {
 function clearAllStyles() {
     activeStyles.clear();
     saveActiveStyles();
-    renderUI();
+    closeModal();
+    openModal();
 }
 
 // 데이터 저장 및 UI 갱신
@@ -327,11 +362,23 @@ function persistDataAndRefresh() {
     context.extension_settings[EXTENSION_NAME].customData = styleData;
     context.extension_settings[EXTENSION_NAME].activeStyles = Array.from(activeStyles);
     saveSettingsExtension();
-    renderUI();
+    closeModal();
+    openModal();
 }
 
 // 초기화
 jQuery(async () => {
+    try {
+        const settingsHtml = await $.get(`/${extensionFolderPath}/index.html`);
+        $('#extensions_settings2').append(settingsHtml);
+    } catch (error) {
+        console.error(`[Style Combinator] UI HTML 로드 실패:`, error);
+        return;
+    }
+
+    $('#btn-open-style-combinator').on('click', openModal);
+
     await loadData();
-    renderUI();
+    updatePromptInjection(); // 저장된 상태 복원 후 프롬프트 주입
+    updateActiveSummary();   // 패널 요약 업데이트
 });
