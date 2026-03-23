@@ -1,7 +1,8 @@
 /* ============================================================
    Style Combinator v4.0.0 — 미색 클린 테마
    ============================================================ */
-:root {
+.style-combinator-settings,
+#style-combinator-modal-overlay {
     --vg-base:       #f7f7f3;
     --vg-sepia:      #c4c4be;
     --vg-ink:        #2e2e2c;
