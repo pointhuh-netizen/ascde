@@ -335,7 +335,7 @@ function renderSelectTab(container) {
                 const isActive = activeStyles.has(style.id) ? 'active_style' : '';
                 const info = STYLE_DESCRIPTIONS[style.id];
                 const shortDesc = info ? info.desc : (style.description || '');
-                const btn = $(`<button class="style-toggle ${isActive}" data-id="${style.id}" title="${shortDesc}">${style.id}. ${style.name}</button>`);
+                const btn = $(`<button class="style-toggle ${isActive}" data-id="${style.id}" title="${shortDesc}">${style.name}</button>`);
                 btn.on('click', () => toggleStyle(style, axis.type, btn));
                 btnContainer.append(btn);
             });
@@ -415,7 +415,7 @@ function renderPresetCategory(container, cat) {
     const grid = $('<div class="sc-preset-grid"></div>');
     presets.forEach(preset => {
         const card = $(`<div class="sc-preset-card" role="button" tabindex="0">
-            <div class="sc-preset-label">${preset.label}</div>
+            <div class="sc-preset-label">${preset.ids.map(getStyleName).join(' + ')}</div>
             <div class="sc-preset-desc">${preset.desc}</div>
         </div>`);
         card.on('click', () => applyPreset(preset.ids));
@@ -449,7 +449,7 @@ function buildComboTable(items, type) {
     const thead = $('<thead><tr><th>조합</th><th>설명</th></tr></thead>');
     const tbody = $('<tbody></tbody>');
     items.forEach(item => {
-        const label = item.ids.join(' + ');
+        const label = item.ids.map(getStyleName).join(' + ');
         const tr = $(`<tr class="sc-combo-row sc-combo-${type}">
             <td class="sc-combo-ids">${label}</td>
             <td class="sc-combo-note">${item.note}</td>
@@ -488,7 +488,6 @@ function showStyleInfo(style) {
     const desc = info ? info.desc : (style.description || '');
 
     let html = `<div class="sc-info-header">
-        <span class="sc-info-id">${style.id}</span>
         <span class="sc-info-name">${name}</span>
         <span class="sc-info-axis-badge">${axisName}</span>
         <button class="sc-info-close" aria-label="닫기">&times;</button>
@@ -500,7 +499,7 @@ function showStyleInfo(style) {
     if (synergies.length > 0) {
         html += `<div class="sc-info-row synergy-row"><span class="sc-info-row-label">★ 추천</span>`;
         html += synergies.map(c =>
-            `<span class="sc-combo-tag sc-tag-synergy">${c.ids.join('+')} <em>${c.description}</em></span>`
+            `<span class="sc-combo-tag sc-tag-synergy">${c.ids.map(getStyleName).join('+')} <em>${c.description}</em></span>`
         ).join('');
         html += `</div>`;
     }
@@ -510,7 +509,7 @@ function showStyleInfo(style) {
     if (frictions.length > 0) {
         html += `<div class="sc-info-row friction-row"><span class="sc-info-row-label">⚡ 마찰</span>`;
         html += frictions.map(c =>
-            `<span class="sc-combo-tag sc-tag-friction">${c.ids.join('+')} <em>${c.effect}</em></span>`
+            `<span class="sc-combo-tag sc-tag-friction">${c.ids.map(getStyleName).join('+')} <em>${c.effect}</em></span>`
         ).join('');
         html += `</div>`;
     }
@@ -520,7 +519,7 @@ function showStyleInfo(style) {
     if (bads.length > 0) {
         html += `<div class="sc-info-row bad-row"><span class="sc-info-row-label">⚠ 비추천</span>`;
         html += bads.map(c =>
-            `<span class="sc-combo-tag sc-tag-bad">${c.ids.join('+')} <em>${c.reason}</em></span>`
+            `<span class="sc-combo-tag sc-tag-bad">${c.ids.map(getStyleName).join('+')} <em>${c.reason}</em></span>`
         ).join('');
         html += `</div>`;
     } else {
@@ -548,12 +547,11 @@ function analyzeCombination() {
     if (active.length === 1) {
         const id = active[0];
         const info = STYLE_DESCRIPTIONS[id];
-        panel.html(`<div class="sc-analysis-single">💡 <strong>${id}${info ? '. ' + getStyleName(id) : ''}</strong> 선택됨. 다른 문체를 추가하면 조합 분석이 표시됩니다.</div>`).show();
+        panel.html(`<div class="sc-analysis-single">💡 <strong>${getStyleName(id)}</strong> 선택됨. 다른 문체를 추가하면 조합 분석이 표시됩니다.</div>`).show();
         return;
     }
 
     // 조합 표기식
-    const expression = active.join(' + ');
     const nameExpression = active.map(getStyleName).join(' + ');
 
     // 축별 분류 (모듈 레벨 상수 사용)
@@ -564,7 +562,7 @@ function analyzeCombination() {
     });
 
     let html = `<div class="sc-analysis-wrap">`;
-    html += `<div class="sc-analysis-expr"><strong>${expression}</strong> = ${nameExpression}</div>`;
+    html += `<div class="sc-analysis-expr"><strong>${nameExpression}</strong></div>`;
     if (axisParts.length > 0) {
         html += `<div class="sc-analysis-axes">${axisParts.join(' / ')}</div>`;
     }
@@ -583,14 +581,14 @@ function analyzeCombination() {
             const score = SYNERGY_TABLE_II_III[tone] && SYNERGY_TABLE_II_III[tone][genre];
             if (score !== undefined) {
                 const cls = score >= 4 ? 'sc-msg-synergy' : score >= 3 ? 'sc-msg-hint' : 'sc-msg-warn';
-                messages.push(`<div class="sc-analysis-msg ${cls}">${renderStars(score)} ${tone}(${getStyleName(tone)}) × ${genre}(${getStyleName(genre)})</div>`);
+                messages.push(`<div class="sc-analysis-msg ${cls}">${renderStars(score)} ${getStyleName(tone)} × ${getStyleName(genre)}</div>`);
             }
         });
         activeWorlds.forEach(world => {
             const score = SYNERGY_TABLE_II_IV[tone] && SYNERGY_TABLE_II_IV[tone][world];
             if (score !== undefined) {
                 const cls = score >= 4 ? 'sc-msg-synergy' : score >= 3 ? 'sc-msg-hint' : 'sc-msg-warn';
-                messages.push(`<div class="sc-analysis-msg ${cls}">${renderStars(score)} ${tone}(${getStyleName(tone)}) × ${world}(${getStyleName(world)})</div>`);
+                messages.push(`<div class="sc-analysis-msg ${cls}">${renderStars(score)} ${getStyleName(tone)} × ${getStyleName(world)}</div>`);
             }
         });
     });
@@ -606,7 +604,7 @@ function analyzeCombination() {
                 (AXIS_TONE.includes(s.ids[1]) && AXIS_WORLD.includes(s.ids[0]))
             );
             if (!alreadyShown) {
-                messages.push(`<div class="sc-analysis-msg sc-msg-synergy">★★★★★ 시너지: ${s.ids.join('+')} — ${s.description}</div>`);
+                messages.push(`<div class="sc-analysis-msg sc-msg-synergy">★★★★★ 시너지: ${s.ids.map(getStyleName).join('+')} — ${s.description}</div>`);
             }
         }
     });
@@ -616,7 +614,7 @@ function analyzeCombination() {
         if (b.ids.every(id => active.includes(id))) {
             const sig = [...b.ids].sort().join('|');
             if (!FRICTION_SIGNATURES.has(sig)) {
-                messages.push(`<div class="sc-analysis-msg sc-msg-bad">⚠ 비추천: ${b.ids.join('+')} — ${b.reason}</div>`);
+                messages.push(`<div class="sc-analysis-msg sc-msg-bad">⚠ 비추천: ${b.ids.map(getStyleName).join('+')} — ${b.reason}</div>`);
             }
         }
     });
@@ -624,7 +622,7 @@ function analyzeCombination() {
     // ── 의도적 마찰 확인 ──
     FRICTION_COMBOS.forEach(f => {
         if (f.ids.every(id => active.includes(id))) {
-            messages.push(`<div class="sc-analysis-msg sc-msg-friction">⚡ 의도적 마찰: ${f.ids.join('+')} — ${f.effect}</div>`);
+            messages.push(`<div class="sc-analysis-msg sc-msg-friction">⚡ 의도적 마찰: ${f.ids.map(getStyleName).join('+')} — ${f.effect}</div>`);
         }
     });
 
