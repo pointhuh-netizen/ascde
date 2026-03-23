@@ -1,23 +1,23 @@
 /* ============================================================
-   Style Combinator v4.0.0 — 밝은 빈티지-크림 테마
+   Style Combinator v4.0.0 — 미색 클린 테마
    ============================================================ */
 :root {
-    --vg-base:       #f5f0e6;
-    --vg-sepia:      #d1b18b;
-    --vg-ink:        #3d3832;
-    --vg-blue:       #729BA3;
-    --vg-blue-dark:  #5d8290;
-    --vg-gold:       #a08060;
-    --vg-cream:      #f8f2ef;
-    --vg-ink-light:  #7a7060;
-    --vg-border:     rgba(209, 177, 139, 0.8);
-    --vg-blue-faint: rgba(114, 155, 163, 0.18);
-    --vg-blue-soft:  rgba(114, 155, 163, 0.30);
-    --vg-bar:        #e8dfd6;
-    --vg-panel:      #efe8e2;
-    --vg-surface:    #f8f2ef;
-    --vg-font-body:  'Noto Serif KR', 'EB Garamond', Georgia, serif;
-    --vg-font-heading: 'Playfair Display', 'Noto Serif KR', Georgia, serif;
+    --vg-base:       #f7f7f3;
+    --vg-sepia:      #c4c4be;
+    --vg-ink:        #2e2e2c;
+    --vg-blue:       #7a9a7e;
+    --vg-blue-dark:  #5f8063;
+    --vg-gold:       #8a9e72;
+    --vg-cream:      #f4f4f0;
+    --vg-ink-light:  #7a7a76;
+    --vg-border:     rgba(196, 196, 190, 0.50);
+    --vg-blue-faint: rgba(122, 154, 126, 0.15);
+    --vg-blue-soft:  rgba(122, 154, 126, 0.28);
+    --vg-bar:        #e8e8e3;
+    --vg-panel:      #eeeee9;
+    --vg-surface:    #f2f2ed;
+    --vg-font-body:  'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    --vg-font-heading: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* ── 사이드바 버튼/요약 ── */
