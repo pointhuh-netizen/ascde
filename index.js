@@ -231,19 +231,86 @@ async function loadData() {
         extension_settings[EXTENSION_NAME] = {};
     }
     const settings = extension_settings[EXTENSION_NAME];
+
+    // 1. 메인 data.json 로드
+    let mainData = null;
     try {
         const response = await fetch(`${extensionUrl}/data.json`);
         if (response.ok) {
-            styleData = await response.json();
-            if (styleData.base_template) {
-                baseTemplate = styleData.base_template;
-            }
+            mainData = await response.json();
         }
     } catch (error) {
         console.error(`[ascde] data.json 로드 실패:`, error);
     }
+
+    if (!mainData) {
+        if (Array.isArray(settings.activeStyles)) {
+            activeStyles = new Set(settings.activeStyles);
+        }
+        return;
+    }
+
+    // 2. 메인 데이터를 styleData / baseTemplate에 적용
+    styleData = {
+        axes: mainData.axes || [],
+        styles: mainData.styles || [],
+    };
+    if (mainData.base_template) {
+        baseTemplate = mainData.base_template;
+    }
+
+    // 3. 추가 데이터 파일 병렬 로드 후 순서대로 병합
+    const additionalFiles = mainData.data_files || [];
+    const extraDataList = await Promise.all(
+        additionalFiles.map(async filename => {
+            try {
+                const resp = await fetch(`${extensionUrl}/${filename}`);
+                if (resp.ok) return await resp.json();
+            } catch (err) {
+                console.warn(`[ascde] ${filename} 로드 실패 (무시):`, err);
+            }
+            return null;
+        })
+    );
+    for (const extra of extraDataList) {
+        if (extra) mergeDataFile(extra);
+    }
+
     if (Array.isArray(settings.activeStyles)) {
         activeStyles = new Set(settings.activeStyles);
+    }
+}
+
+/**
+ * 추가 데이터 파일을 현재 styleData / baseTemplate에 병합합니다.
+ * - axes / styles: id 기준 중복 제거 (나중 파일이 우선)
+ * - base_template.preamble: 첫 번째로 발견된 값 사용
+ * - base_template.modules: 나중 파일이 우선하는 얕은 병합
+ * @param {Object} extra - 병합할 데이터 파일의 파싱된 JSON 객체
+ */
+function mergeDataFile(extra) {
+    // axes 병합: id 기준 중복 제거 (나중 것 우선)
+    if (Array.isArray(extra.axes)) {
+        const axisMap = new Map(styleData.axes.map(a => [a.id, a]));
+        extra.axes.forEach(a => axisMap.set(a.id, a));
+        styleData.axes = Array.from(axisMap.values());
+    }
+
+    // styles 병합: id 기준 중복 제거 (나중 것 우선)
+    if (Array.isArray(extra.styles)) {
+        const styleMap = new Map(styleData.styles.map(s => [s.id, s]));
+        extra.styles.forEach(s => styleMap.set(s.id, s));
+        styleData.styles = Array.from(styleMap.values());
+    }
+
+    // base_template deep merge
+    if (extra.base_template) {
+        if (!baseTemplate.preamble && extra.base_template.preamble) {
+            baseTemplate.preamble = extra.base_template.preamble;
+        }
+        if (extra.base_template.modules) {
+            baseTemplate.modules = { ...baseTemplate.modules, ...extra.base_template.modules };
+        }
     }
 }
 
