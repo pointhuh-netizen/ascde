@@ -744,9 +744,15 @@ function resolveStylePrompt(style) {
     }
 
     // 1. preamble 조립: base_template.preamble의 {{placeholder}}를 preamble_overrides 값으로 치환
+    //    스타일 overrides 적용 후 남은 placeholder는 base_template.preamble_defaults로 채움
     let preamble = baseTemplate.preamble || '';
     if (tmpl.preamble_overrides) {
         Object.entries(tmpl.preamble_overrides).forEach(([key, val]) => {
+            preamble = preamble.replace(`{{${key}}}`, val);
+        });
+    }
+    if (baseTemplate.preamble_defaults) {
+        Object.entries(baseTemplate.preamble_defaults).forEach(([key, val]) => {
             preamble = preamble.replace(`{{${key}}}`, val);
         });
     }
