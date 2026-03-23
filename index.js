@@ -6,7 +6,8 @@ import { saveSettingsDebounced, setExtensionPrompt, extension_prompt_types } fro
 const EXTENSION_NAME = 'ascde';
 const extensionUrl = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
 
-let styleData = { axes: [], rules: {}, recommendations: [], styles: [] };
+let styleData = { axes: [], styles: [] };
+let baseTemplate = { preamble: '', modules: {} };
 let activeStyles = new Set();
 let activePresetTab = '로맨스';
 
@@ -234,6 +235,9 @@ async function loadData() {
         const response = await fetch(`${extensionUrl}/data.json`);
         if (response.ok) {
             styleData = await response.json();
+            if (styleData.base_template) {
+                baseTemplate = styleData.base_template;
+            }
         }
     } catch (error) {
         console.error(`[ascde] data.json 로드 실패:`, error);
@@ -676,6 +680,46 @@ const SIMILARITY_THRESHOLD_HIGH = 0.7; // 이 이상이면 공통 줄만 남기�
 const SIMILARITY_THRESHOLD_LOW  = 0.3; // 이 이상이면 BASE/OVERLAY 태그 구분, 미만이면 둘 다 그대로
 
 /**
+ * base_template + style delta를 조합하여 prompt_payload 형태의 문자열을 반환합니다.
+ * style.prompt_template이 없거나 use_base가 false이면 style.prompt_payload로 폴백합니다.
+ * @param {Object} style
+ * @returns {string}
+ */
+function resolveStylePrompt(style) {
+    const tmpl = style.prompt_template;
+    if (!tmpl || !tmpl.use_base) {
+        return style.prompt_payload || '';
+    }
+
+    // 1. preamble 조립: base_template.preamble의 {{placeholder}}를 preamble_overrides 값으로 치환
+    let preamble = baseTemplate.preamble || '';
+    if (tmpl.preamble_overrides) {
+        Object.entries(tmpl.preamble_overrides).forEach(([key, val]) => {
+            preamble = preamble.replace(`{{${key}}}`, val);
+        });
+    }
+
+    // 2. 모듈 조립: MODULE 1~9에 대해 override → base → addition 순으로 적용
+    let result = preamble + '\n\n';
+    for (let i = 1; i <= 9; i++) {
+        const iStr = String(i);
+        const override = tmpl.module_overrides && tmpl.module_overrides[iStr];
+        const baseModule = baseTemplate.modules && baseTemplate.modules[iStr];
+        const addition = tmpl.module_additions && tmpl.module_additions[iStr];
+        if (override) {
+            result += override + '\n\n';
+        } else if (baseModule) {
+            result += baseModule + '\n\n';
+            if (addition) {
+                result += addition + '\n\n';
+            }
+        }
+    }
+
+    return result.trim();
+}
+
+/**
  * prompt_payload 문자열에서 MODULE_1~8 블록을 파싱합니다.
  * 각 블록은 `## <MODULE_N: ...>` 또는 `<MODULE_N: ...>` 으로 시작하고
  * `</MODULE_N>` 으로 끝납니다.
@@ -903,7 +947,8 @@ function updatePromptInjection() {
 
         // STEP 1: 톤 = 베이스 (MODULE_1~7 전부)
         toneStyles.forEach((s, idx) => {
-            const { modules, preamble } = parseModules(s.prompt_payload);
+            const resolvedPayload = resolveStylePrompt(s);
+            const { modules, preamble } = parseModules(resolvedPayload);
             if (preamble && !basePreamble) basePreamble = preamble;
             const role = idx === 0 ? 'base' : 'secondary';
             const hasParsedModules = Object.keys(modules).length > 0;
@@ -917,39 +962,42 @@ function updatePromptInjection() {
                     }
                 });
             } else {
-                addModule(1, s.id, 'II', role, s.prompt_payload);
+                addModule(1, s.id, 'II', role, resolvedPayload);
             }
         });
 
         // STEP 2: 서사(관계/장르) → MODULE_1(VOICE) + MODULE_4(CAUSALITY) (overlay)
         [...narrativeRelStyles, ...narrativeGenStyles].forEach(s => {
-            const { modules } = parseModules(s.prompt_payload);
+            const resolvedPayload = resolveStylePrompt(s);
+            const { modules } = parseModules(resolvedPayload);
             const hasParsedModules = Object.keys(modules).length > 0;
             if (hasParsedModules) {
                 if (modules[1]) addModule(1, s.id, 'narrative', 'overlay', modules[1]);
                 if (modules[4]) addModule(4, s.id, 'narrative', 'overlay', modules[4]);
                 if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
             } else {
-                addModule(1, s.id, 'narrative', 'overlay', s.prompt_payload);
+                addModule(1, s.id, 'narrative', 'overlay', resolvedPayload);
             }
         });
 
         // STEP 3: 서술 → MODULE_2(PROSE) + MODULE_7(FORMATTING) (overlay)
         narrationStyles.forEach(s => {
-            const { modules } = parseModules(s.prompt_payload);
+            const resolvedPayload = resolveStylePrompt(s);
+            const { modules } = parseModules(resolvedPayload);
             const hasParsedModules = Object.keys(modules).length > 0;
             if (hasParsedModules) {
                 if (modules[2]) addModule(2, s.id, 'narration', 'overlay', modules[2]);
                 if (modules[7]) addModule(7, s.id, 'narration', 'overlay', modules[7]);
                 if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
             } else {
-                addModule(2, s.id, 'narration', 'overlay', s.prompt_payload);
+                addModule(2, s.id, 'narration', 'overlay', resolvedPayload);
             }
         });
 
         // STEP 4: 세계(배경/구조) → MODULE_1 + MODULE_3 + MODULE_6 (overlay)
         [...worldBgStyles, ...worldStStyles].forEach(s => {
-            const { modules } = parseModules(s.prompt_payload);
+            const resolvedPayload = resolveStylePrompt(s);
+            const { modules } = parseModules(resolvedPayload);
             const hasParsedModules = Object.keys(modules).length > 0;
             if (hasParsedModules) {
                 if (modules[1]) addModule(1, s.id, 'world', 'overlay', modules[1]);
@@ -957,14 +1005,15 @@ function updatePromptInjection() {
                 if (modules[6]) addModule(6, s.id, 'world', 'overlay', modules[6]);
                 if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
             } else {
-                addModule(3, s.id, 'world', 'overlay', s.prompt_payload);
+                addModule(3, s.id, 'world', 'overlay', resolvedPayload);
             }
         });
 
         // STEP 5: 모드 → 최상단 추가
         modeStyles.forEach(s => {
-            const { modules } = parseModules(s.prompt_payload);
-            modeBlocks.push(s.prompt_payload);
+            const resolvedPayload = resolveStylePrompt(s);
+            const { modules } = parseModules(resolvedPayload);
+            modeBlocks.push(resolvedPayload);
             if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
         });
 
@@ -1042,7 +1091,8 @@ function updatePromptInjection() {
         if (toneStyles.length === 0 && Object.keys(finalModules).length === 0 && modeBlocks.length === 0) {
             finalPrompt = '### [COMBINED LITERARY ROLEPLAY ENGINE]\n\n';
             selected.forEach(s => {
-                finalPrompt += `<MODULE_OVERLAY: STYLE_${s.id}>\n${s.prompt_payload}\n</MODULE_OVERLAY>\n\n`;
+                const resolvedPayload = resolveStylePrompt(s);
+                finalPrompt += `<MODULE_OVERLAY: STYLE_${s.id}>\n${resolvedPayload}\n</MODULE_OVERLAY>\n\n`;
             });
         }
     }
