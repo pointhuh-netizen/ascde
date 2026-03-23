@@ -269,6 +269,11 @@ function openModal() {
     renderModalContent(modal);
     overlay.append(modal);
     $('body').append(overlay);
+
+    // modal이 DOM에 추가된 후에 초기 상태를 업데이트해야
+    // $('#combination-analysis-panel'), $('#style-combinator-preview') 등을 찾을 수 있음
+    analyzeCombination();
+    updatePromptInjection();
 }
 
 function closeModal() {
@@ -351,10 +356,6 @@ function renderSelectTab(container) {
         <div id="style-combinator-preview" class="sc-preview-content">선택된 문체가 없습니다.</div>
     </div>`);
     container.append(previewPanel);
-
-    // 초기 상태 업데이트
-    analyzeCombination();
-    updatePromptInjection();
 }
 
 // =====================================================================
@@ -1042,6 +1043,28 @@ function updatePromptInjection() {
             modeBlocks.push(resolvedPayload);
             if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
         });
+
+        // FALLBACK: STEP 1~5 이후 finalModules에 빠진 모듈(1~7)을 선택된 스타일에서 보충
+        // 톤 없이 서사/서술/세계 축만 선택하면 해당 STEP에서 일부 모듈만 추출하므로
+        // 나머지 모듈이 누락됨 — 선택된 스타일 중 해당 모듈을 보유한 첫 스타일로 채움
+        const fallbackPriority = [
+            ...toneStyles, ...narrativeRelStyles, ...narrativeGenStyles,
+            ...narrationStyles, ...worldBgStyles, ...worldStStyles, ...modeStyles
+        ];
+        // 반복 파싱 방지: 각 스타일의 모듈을 한 번만 파싱하여 캐싱
+        const fallbackParsed = fallbackPriority.map(s => ({
+            id: s.id,
+            modules: parseModules(resolveStylePrompt(s)).modules
+        }));
+        for (let i = 1; i <= 7; i++) {
+            if (finalModules[i] && finalModules[i].length > 0) continue;
+            for (const parsed of fallbackParsed) {
+                if (parsed.modules[i]) {
+                    addModule(i, parsed.id, 'fallback', 'fallback', parsed.modules[i]);
+                    break;
+                }
+            }
+        }
 
         // ── 최종 프롬프트 조립 ──
         finalPrompt = '### [COMBINED LITERARY ROLEPLAY ENGINE]\n\n';
