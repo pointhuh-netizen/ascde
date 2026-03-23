@@ -232,15 +232,18 @@ async function loadData() {
     }
     const settings = extension_settings[EXTENSION_NAME];
 
-    // 1. 메인 data.json 로드
+    // 1. 메인 데이터 로드 (data01.json 우선, 없으면 data.json 폴백)
     let mainData = null;
-    try {
-        const response = await fetch(`${extensionUrl}/data.json`);
-        if (response.ok) {
-            mainData = await response.json();
+    for (const filename of ['data01.json', 'data.json']) {
+        try {
+            const response = await fetch(`${extensionUrl}/${filename}`);
+            if (response.ok) {
+                mainData = await response.json();
+                break;
+            }
+        } catch (error) {
+            console.warn(`[ascde] ${filename} 로드 실패, 다음 파일 시도:`, error);
         }
-    } catch (error) {
-        console.error(`[ascde] data.json 로드 실패:`, error);
     }
 
     if (!mainData) {
