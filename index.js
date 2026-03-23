@@ -694,6 +694,44 @@ function estimateTokenCount(text) {
 }
 
 /**
+ * 섹션 구조(header/footer/sections)를 마크다운 문자열로 조립합니다.
+ * 섹션은 번호 순으로 정렬되며, 각 섹션은 "### heading\nbody" 형태로 조립됩니다.
+ * @param {string} header - 모듈 헤더 (예: "## <MODULE_1: VOICE>")
+ * @param {string} footer - 모듈 푸터 (예: "</MODULE_1>")
+ * @param {Object.<string, {heading: string, body: string}>} sections - 섹션 맵
+ * @returns {string}
+ */
+function assembleModuleFromSections(header, footer, sections) {
+    const parts = [];
+    if (header) parts.push(header);
+    const sortedKeys = Object.keys(sections).sort((a, b) => Number(a) - Number(b) || a.localeCompare(b));
+    for (const key of sortedKeys) {
+        const section = sections[key];
+        if (section.heading) parts.push('### ' + section.heading);
+        if (section.body) parts.push(section.body);
+    }
+    if (footer) parts.push(footer);
+    return parts.join('\n');
+}
+
+/**
+ * base_template.modules[N] 값(문자열 또는 섹션 구조 객체)을 마크다운 문자열로 변환합니다.
+ * @param {string|Object} moduleVal - 문자열이면 그대로 반환, 객체이면 섹션 조립
+ * @returns {string}
+ */
+function resolveBaseModuleString(moduleVal) {
+    if (typeof moduleVal === 'string') return moduleVal;
+    if (moduleVal && typeof moduleVal === 'object' && moduleVal.sections) {
+        return assembleModuleFromSections(
+            moduleVal.header || '',
+            moduleVal.footer || '',
+            moduleVal.sections
+        );
+    }
+    return '';
+}
+
+/**
  * base_template + style delta를 조합하여 prompt_payload 형태의 문자열을 반환합니다.
  * style.prompt_template이 없거나 use_base가 false이면 style.prompt_payload로 폴백합니다.
  * @param {Object} style
@@ -720,14 +758,67 @@ function resolveStylePrompt(style) {
         const override = tmpl.module_overrides && tmpl.module_overrides[iStr];
         const baseModule = baseTemplate.modules && baseTemplate.modules[iStr];
         const addition = tmpl.module_additions && tmpl.module_additions[iStr];
-        if (override) {
-            result += override + '\n\n';
-        } else if (baseModule) {
-            result += baseModule + '\n\n';
-            if (addition) {
-                result += addition + '\n\n';
+
+        let moduleStr;
+        // 추가로 별도 출력할 문자열 (기존 string addition 하위 호환용)
+        let trailingStr = null;
+
+        if (typeof override === 'string') {
+            // 기존: 문자열 override → 모듈 전체 교체 (addition 미적용)
+            moduleStr = override;
+        } else if (override && typeof override === 'object') {
+            // 새로운: 객체 override → 섹션 단위 delta 적용
+            const baseIsObject = baseModule && typeof baseModule === 'object' && baseModule.sections;
+            const baseSections = baseIsObject ? baseModule.sections : {};
+            const baseHeader = baseIsObject ? (baseModule.header || '') : '';
+            const baseFooter = baseIsObject ? (baseModule.footer || '') : '';
+
+            // header/footer: override에 있으면 override, 없으면 base 값 사용
+            const header = override.header !== undefined ? override.header : baseHeader;
+            const footer = override.footer !== undefined ? override.footer : baseFooter;
+
+            // sections: base에 section_overrides를 덮어쓰고 section_additions를 추가
+            const mergedSections = Object.assign({}, baseSections);
+            if (override.section_overrides) {
+                Object.assign(mergedSections, override.section_overrides);
             }
+            if (override.section_additions) {
+                Object.assign(mergedSections, override.section_additions);
+            }
+
+            moduleStr = assembleModuleFromSections(header, footer, mergedSections);
+            // 객체 override에도 addition 미적용 (전체 교체와 동일 취급)
+        } else if (baseModule) {
+            // override 없음: base 모듈 사용 (문자열 또는 객체)
+            moduleStr = resolveBaseModuleString(baseModule);
+
+            if (addition) {
+                if (typeof addition === 'string') {
+                    // 기존: 문자열 addition → 모듈 뒤에 별도로 추가 (기존 출력 형태 보존)
+                    trailingStr = addition;
+                } else if (typeof addition === 'object' && addition.sections) {
+                    // 새로운: 객체 addition → 섹션들을 base 모듈 섹션에 합쳐 재조립
+                    const baseIsObject = typeof baseModule === 'object' && baseModule.sections;
+                    if (baseIsObject) {
+                        const mergedSections = Object.assign({}, baseModule.sections, addition.sections);
+                        moduleStr = assembleModuleFromSections(
+                            addition.header !== undefined ? addition.header : (baseModule.header || ''),
+                            addition.footer !== undefined ? addition.footer : (baseModule.footer || ''),
+                            mergedSections
+                        );
+                    } else {
+                        // base가 문자열이면 섹션 조립 결과를 별도로 추가
+                        const addStr = assembleModuleFromSections('', '', addition.sections);
+                        if (addStr) trailingStr = addStr;
+                    }
+                }
+            }
+        } else {
+            continue; // base도 override도 없으면 건너뜀
         }
+
+        if (moduleStr) result += moduleStr + '\n\n';
+        if (trailingStr) result += trailingStr + '\n\n';
     }
 
     return result.trim();
