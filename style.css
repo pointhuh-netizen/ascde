@@ -378,6 +378,16 @@
     color: var(--vg-blue-dark);
 }
 
+.sc-preview-stats {
+    font-size: 0.85em;
+    color: var(--SmartThemeQuoteColor, #888);
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    background: var(--SmartThemeBlurTintColor, rgba(0,0,0,0.1));
+    border-radius: 4px;
+    display: inline-block;
+}
+
 .sc-preview-content {
     max-height: 130px;
     overflow-y: auto;
