@@ -42,7 +42,14 @@
       "type": "layer"
     }
   ],
-  "data_files": ["data02.json","data03.json","data04.json","data05.json"],
+  "data_files": [
+    "data02.json",
+    "data03.json",
+    "data04.json",
+    "data05.json",
+    "data06.json",
+    "data07.json"
+  ],
   "styles": [
     {
       "id": "A",
