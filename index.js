@@ -14,54 +14,56 @@ let activePresetTab = '로맨스';
 // § 1. 하드코딩 문체 설명 데이터
 // =====================================================================
 const STYLE_DESCRIPTIONS = {
-    // Ⅰ. 형식/시점
-    K:  { name: '2인칭',          axisName: '형식/시점',   desc: '"당신은 ~했다" 형식. 독자를 주인공으로 끌어들이는 몰입형 서술.' },
-    L:  { name: '디지털 네이티브', axisName: '형식/시점',   desc: '채팅+서술 하이브리드. SNS·메신저·이모지가 섞인 현대적 텍스트.' },
-    M:  { name: '메타픽션',        axisName: '형식/시점',   desc: '서술이 서술을 의심. 화자가 독자와 대화하거나 장르를 해체.' },
-    N:  { name: '미니멀리즘 극단', axisName: '형식/시점',   desc: '빠진 것이 더 많다. 침묵과 공백이 의미를 만드는 서술.' },
-    O:  { name: '의식의 흐름 극단', axisName: '형식/시점',  desc: '쉼표로만 이어지는 문단. 내면의 흐름을 끊김 없이 서술.' },
-    P:  { name: '다큐/르포',       axisName: '형식/시점',   desc: '논픽션으로 픽션을. 객관적 보고서 형식으로 이야기를 전달.' },
-    R:  { name: '서간체/일기체',   axisName: '형식/시점',   desc: '편지·일기·메모 형식. 사적인 언어가 서사를 이끈다.' },
-    S:  { name: '각본체',          axisName: '형식/시점',   desc: '지문과 대사만. 연극·영화 스크립트 형식의 서술.' },
-    // Ⅱ. 톤/분위기
-    A:  { name: '외부 관찰형',     axisName: '톤/분위기',   desc: '행동과 간극. 인물의 행동만 서술하고 내면은 독자가 추론.' },
-    B:  { name: '내면 밀착형',     axisName: '톤/분위기',   desc: '의식=서술. 인물의 내면이 곧 텍스트. 극도의 주관성.' },
-    C:  { name: '웜 코미디형',     axisName: '톤/분위기',   desc: '자각 지연, 따뜻한 유머. 어설픈 상황을 온기로 바라본다.' },
-    D:  { name: '임상 건조형',     axisName: '톤/분위기',   desc: '해리적 정밀함. 감정 없는 언어로 쓰는 더 날카로운 감정.' },
-    E:  { name: '감각 리얼리즘형', axisName: '톤/분위기',   desc: '감각의 편집. 촉각·후각·미각이 장면을 지배.' },
-    F:  { name: '하드보일드',      axisName: '톤/분위기',   desc: '행동이 유일한 언어. 감정은 동사로만, 설명하지 않는다.' },
-    G:  { name: '무드 피스',       axisName: '톤/분위기',   desc: '분위기가 주인공. 사건보다 감각과 정서가 이야기를 이끈다.' },
-    J:  { name: '데카당스',        axisName: '톤/분위기',   desc: '탐미와 허무. 아름다움과 몰락이 공존하는 퇴폐적 서술.' },
-    T:  { name: '고딕',            axisName: '톤/분위기',   desc: '공간이 인물. 장소가 심리를 반영하는 고딕 전통.' },
-    AD: { name: '코미디 극단',     axisName: '톤/분위기',   desc: '건조한 슬랩스틱. 상황의 불합리성을 직접적으로 밀어붙인다.' },
-    AH: { name: '부조리극',        axisName: '톤/분위기',   desc: '카프카적 비논리. 세계의 규칙이 이상하고 아무도 의문을 품지 않는다.' },
-    AL: { name: '몽환/환상',       axisName: '톤/분위기',   desc: '꿈의 논리. 이미지가 과잉, 현실과 환상의 경계가 흐릿.' },
-    AN: { name: '동화/우화',       axisName: '톤/분위기',   desc: '"옛날 옛적에". 동화 문법으로 쓰는 어른의 이야기.' },
-    AR: { name: '일상물',          axisName: '톤/분위기',   desc: '사건 없는 서사. 평범한 하루의 질감을 정밀하게 포착.' },
-    // Ⅲ. 관계/장르
-    U:  { name: '감성 멜로',       axisName: '관계/장르',   desc: '예쁜 문장, 직접 감정. 감정이 표면에 드러나는 로맨스.' },
-    X:  { name: '빌런 로맨스',     axisName: '관계/장르',   desc: '위험+매혹, 권력 비대칭. 선악의 경계에서 벌어지는 사랑.' },
-    AA: { name: '치유물/힐링',     axisName: '관계/장르',   desc: '공존이 치유. 함께 있는 것만으로 상처가 아문다.' },
-    AB: { name: '관능 문학',       axisName: '관계/장르',   desc: '신체가 감정을 말한다. 관능성으로 심리를 표현.' },
-    H:  { name: '심리 스릴러',     axisName: '관계/장르',   desc: '신뢰할 수 없는 서술. 무엇이 진실인지 알 수 없다.' },
-    AE: { name: '호러',            axisName: '관계/장르',   desc: '이상의 축적. 작은 균열들이 쌓여 공포가 된다.' },
-    AJ: { name: '추리/미스터리',   axisName: '관계/장르',   desc: '단서, 유저 주도 추론. 독자가 직접 수수께끼를 푼다.' },
-    // Ⅳ. 세계관/구조
-    I:  { name: '군상극',          axisName: '세계관/구조', desc: '교차 편집. 여러 인물의 시선이 하나의 사건을 다각도로 조명.' },
-    Q:  { name: '시간 루프',       axisName: '세계관/구조', desc: '반복과 변주. 같은 시간을 다르게 살며 변화를 기록.' },
-    V:  { name: '판타지/사극',     axisName: '세계관/구조', desc: '의전, 전투, 정치. 다른 세계와 다른 시대의 규칙.' },
-    W:  { name: '게임 서사',       axisName: '세계관/구조', desc: '스킬=내면, 판정. 게임 시스템이 이야기의 언어.' },
-    AC: { name: '세계관 빌딩',     axisName: '세계관/구조', desc: '세계가 주인공. 디테일한 설정이 이야기를 만든다.' },
-    AF: { name: '하드 SF',         axisName: '세계관/구조', desc: '과학이 플롯. 과학적 원리가 서사의 중심.' },
-    AG: { name: '회귀/빙의물',     axisName: '세계관/구조', desc: '정보 비대칭, 정체성. 과거로 돌아가거나 다른 몸에 들어간다.' },
-    AI: { name: '무협',            axisName: '세계관/구조', desc: '강호, 내공, 초식. 무협 세계의 언어와 미학.' },
-    AM: { name: '포스트 아포칼립스', axisName: '세계관/구조', desc: '폐허, 생존, 자원. 문명 이후의 세계.' },
-    AO: { name: '스포츠/경쟁',     axisName: '세계관/구조', desc: '신체의 한계, 경기 리듬. 승부의 언어.' },
-    AP: { name: '직장물',          axisName: '세계관/구조', desc: '조직 정치, 메일의 전쟁. 직장 생존의 서사.' },
-    AQ: { name: '먼치킨/역행자',   axisName: '세계관/구조', desc: '압도의 쾌감과 이면. 강한 주인공의 서사.' },
-    AT: { name: '성장물',          axisName: '세계관/구조', desc: '"처음"의 서사. 시작과 변화, 첫 경험의 기록.' },
-    AU: { name: '로드무비/여행',   axisName: '세계관/구조', desc: '이동이 서사. 여정 자체가 이야기.' },
-    // Ⅴ. 모드
+    // ① 서술 (Narration)
+    K:  { name: '2인칭',          axisName: '서술',        desc: '"당신은 ~했다" 형식. 독자를 주인공으로 끌어들이는 몰입형 서술.' },
+    L:  { name: '디지털 네이티브', axisName: '서술',        desc: '채팅+서술 하이브리드. SNS·메신저·이모지가 섞인 현대적 텍스트.' },
+    M:  { name: '메타픽션',        axisName: '서술',        desc: '서술이 서술을 의심. 화자가 독자와 대화하거나 장르를 해체.' },
+    N:  { name: '미니멀리즘 극단', axisName: '서술',        desc: '빠진 것이 더 많다. 침묵과 공백이 의미를 만드는 서술.' },
+    O:  { name: '의식의 흐름 극단', axisName: '서술',       desc: '쉼표로만 이어지는 문단. 내면의 흐름을 끊김 없이 서술.' },
+    P:  { name: '다큐/르포',       axisName: '서술',        desc: '논픽션으로 픽션을. 객관적 보고서 형식으로 이야기를 전달.' },
+    R:  { name: '서간체/일기체',   axisName: '서술',        desc: '편지·일기·메모 형식. 사적인 언어가 서사를 이끈다.' },
+    S:  { name: '각본체',          axisName: '서술',        desc: '지문과 대사만. 연극·영화 스크립트 형식의 서술.' },
+    // ② 톤 (Tone)
+    A:  { name: '외부 관찰형',     axisName: '톤',          desc: '행동과 간극. 인물의 행동만 서술하고 내면은 독자가 추론.' },
+    B:  { name: '내면 밀착형',     axisName: '톤',          desc: '의식=서술. 인물의 내면이 곧 텍스트. 극도의 주관성.' },
+    C:  { name: '웜 코미디형',     axisName: '톤',          desc: '자각 지연, 따뜻한 유머. 어설픈 상황을 온기로 바라본다.' },
+    D:  { name: '임상 건조형',     axisName: '톤',          desc: '해리적 정밀함. 감정 없는 언어로 쓰는 더 날카로운 감정.' },
+    E:  { name: '감각 리얼리즘형', axisName: '톤',          desc: '감각의 편집. 촉각·후각·미각이 장면을 지배.' },
+    F:  { name: '하드보일드',      axisName: '톤',          desc: '행동이 유일한 언어. 감정은 동사로만, 설명하지 않는다.' },
+    G:  { name: '무드 피스',       axisName: '톤',          desc: '분위기가 주인공. 사건보다 감각과 정서가 이야기를 이끈다.' },
+    J:  { name: '데카당스',        axisName: '톤',          desc: '탐미와 허무. 아름다움과 몰락이 공존하는 퇴폐적 서술.' },
+    T:  { name: '고딕',            axisName: '톤',          desc: '공간이 인물. 장소가 심리를 반영하는 고딕 전통.' },
+    AD: { name: '코미디 극단',     axisName: '톤',          desc: '건조한 슬랩스틱. 상황의 불합리성을 직접적으로 밀어붙인다.' },
+    AH: { name: '부조리극',        axisName: '톤',          desc: '카프카적 비논리. 세계의 규칙이 이상하고 아무도 의문을 품지 않는다.' },
+    AL: { name: '몽환/환상',       axisName: '톤',          desc: '꿈의 논리. 이미지가 과잉, 현실과 환상의 경계가 흐릿.' },
+    AR: { name: '일상물',          axisName: '톤',          desc: '사건 없는 서사. 평범한 하루의 질감을 정밀하게 포착.' },
+    // ③ 서사/관계 (Narrative — Relation)
+    U:  { name: '감성 멜로',       axisName: '서사/관계',   desc: '예쁜 문장, 직접 감정. 감정이 표면에 드러나는 로맨스.' },
+    X:  { name: '빌런 로맨스',     axisName: '서사/관계',   desc: '위험+매혹, 권력 비대칭. 선악의 경계에서 벌어지는 사랑.' },
+    AA: { name: '치유물/힐링',     axisName: '서사/관계',   desc: '공존이 치유. 함께 있는 것만으로 상처가 아문다.' },
+    AB: { name: '관능 문학',       axisName: '서사/관계',   desc: '신체가 감정을 말한다. 관능성으로 심리를 표현.' },
+    // ③ 서사/장르 (Narrative — Genre)
+    H:  { name: '심리 스릴러',     axisName: '서사/장르',   desc: '신뢰할 수 없는 서술. 무엇이 진실인지 알 수 없다.' },
+    AE: { name: '호러',            axisName: '서사/장르',   desc: '이상의 축적. 작은 균열들이 쌓여 공포가 된다.' },
+    AJ: { name: '추리/미스터리',   axisName: '서사/장르',   desc: '단서, 유저 주도 추론. 독자가 직접 수수께끼를 푼다.' },
+    AN: { name: '동화/우화',       axisName: '서사/장르',   desc: '"옛날 옛적에". 동화 문법으로 쓰는 어른의 이야기.' },
+    AT: { name: '성장물',          axisName: '서사/장르',   desc: '"처음"의 서사. 시작과 변화, 첫 경험의 기록.' },
+    // ④ 세계/배경 (World — Background)
+    V:  { name: '판타지/사극',     axisName: '세계/배경',   desc: '의전, 전투, 정치. 다른 세계와 다른 시대의 규칙.' },
+    AF: { name: '하드 SF',         axisName: '세계/배경',   desc: '과학이 플롯. 과학적 원리가 서사의 중심.' },
+    AI: { name: '무협',            axisName: '세계/배경',   desc: '강호, 내공, 초식. 무협 세계의 언어와 미학.' },
+    AM: { name: '포스트 아포칼립스', axisName: '세계/배경', desc: '폐허, 생존, 자원. 문명 이후의 세계.' },
+    AP: { name: '직장물',          axisName: '세계/배경',   desc: '조직 정치, 메일의 전쟁. 직장 생존의 서사.' },
+    // ④ 세계/구조 (World — Structure)
+    I:  { name: '군상극',          axisName: '세계/구조',   desc: '교차 편집. 여러 인물의 시선이 하나의 사건을 다각도로 조명.' },
+    Q:  { name: '시간 루프',       axisName: '세계/구조',   desc: '반복과 변주. 같은 시간을 다르게 살며 변화를 기록.' },
+    W:  { name: '게임 서사',       axisName: '세계/구조',   desc: '스킬=내면, 판정. 게임 시스템이 이야기의 언어.' },
+    AC: { name: '세계관 빌딩',     axisName: '세계/구조',   desc: '세계가 주인공. 디테일한 설정이 이야기를 만든다.' },
+    AG: { name: '회귀/빙의물',     axisName: '세계/구조',   desc: '정보 비대칭, 정체성. 과거로 돌아가거나 다른 몸에 들어간다.' },
+    AO: { name: '스포츠/경쟁',     axisName: '세계/구조',   desc: '신체의 한계, 경기 리듬. 승부의 언어.' },
+    AQ: { name: '먼치킨/역행자',   axisName: '세계/구조',   desc: '압도의 쾌감과 이면. 강한 주인공의 서사.' },
+    AU: { name: '로드무비/여행',   axisName: '세계/구조',   desc: '이동이 서사. 여정 자체가 이야기.' },
+    // ⑤ 모드 (Mode)
     AK: { name: '아이돌/팬픽',     axisName: '모드',        desc: '윤리 레이어 + 베이스 조합. 아이돌 세계관의 특수한 감각.' },
     AS: { name: '크리처/인외 존재', axisName: '모드',        desc: '비인간 감각 체계. 인간이 아닌 존재의 시선.' },
 };
@@ -154,42 +156,60 @@ const PRESET_RECOMMENDATIONS = {
 // =====================================================================
 // § 2-b. 시너지 점수 테이블 (문제 명세 §시너지 조합표)
 // =====================================================================
-// Ⅱ×Ⅲ: 톤 × 관계/장르  (1~5점)
+// Ⅱ×Ⅲ: 톤 × 서사/관계+장르  (1~5점)
 const SYNERGY_TABLE_II_III = {
-    C:  { U: 5, X: 2, AA: 4, AB: 2, H: 1, AE: 1, AJ: 2 },
-    F:  { U: 4, X: 5, AA: 2, AB: 3, H: 5, AE: 3, AJ: 5 },
-    G:  { U: 5, X: 3, AA: 5, AB: 4, H: 3, AE: 4, AJ: 3 },
-    T:  { U: 3, X: 4, AA: 2, AB: 3, H: 4, AE: 5, AJ: 4 },
-    AD: { U: 3, X: 2, AA: 3, AB: 1, H: 2, AE: 2, AJ: 3 },
-    AL: { U: 4, X: 3, AA: 3, AB: 4, H: 3, AE: 5, AJ: 2 },
-    AR: { U: 3, X: 1, AA: 5, AB: 2, H: 1, AE: 2, AJ: 1 },
+    C:  { U: 5, X: 2, AA: 4, AB: 2, H: 1, AE: 1, AJ: 2, AN: 3, AT: 5 },
+    F:  { U: 4, X: 5, AA: 2, AB: 3, H: 5, AE: 3, AJ: 5, AN: 1, AT: 2 },
+    G:  { U: 5, X: 3, AA: 5, AB: 4, H: 3, AE: 4, AJ: 3, AN: 4, AT: 4 },
+    T:  { U: 3, X: 4, AA: 2, AB: 3, H: 4, AE: 5, AJ: 4, AN: 4, AT: 3 },
+    AD: { U: 3, X: 2, AA: 3, AB: 1, H: 2, AE: 2, AJ: 3, AN: 3, AT: 3 },
+    AL: { U: 4, X: 3, AA: 3, AB: 4, H: 3, AE: 5, AJ: 2, AN: 5, AT: 3 },
+    AR: { U: 3, X: 1, AA: 5, AB: 2, H: 1, AE: 2, AJ: 1, AN: 2, AT: 3 },
 };
 
-// Ⅱ×Ⅳ: 톤 × 세계관/구조  (1~5점)
+// Ⅱ×Ⅳ: 톤 × 세계/배경+구조  (1~5점)
 const SYNERGY_TABLE_II_IV = {
-    B:  { V: 4, AI: 3, AF: 5, AG: 5, AP: 4, AQ: 3, AU: 4, AT: 5 },
-    C:  { V: 3, AI: 2, AF: 3, AG: 4, AP: 5, AQ: 4, AU: 4, AT: 5 },
-    F:  { V: 4, AI: 5, AF: 4, AG: 4, AP: 3, AQ: 4, AU: 4, AT: 2 },
-    G:  { V: 5, AI: 4, AF: 3, AG: 3, AP: 4, AQ: 2, AU: 5, AT: 4 },
-    AD: { V: 4, AI: 3, AF: 4, AG: 5, AP: 5, AQ: 5, AU: 3, AT: 3 },
+    B:  { V: 4, AI: 3, AF: 5, AG: 5, AP: 4, AQ: 3, AU: 4 },
+    C:  { V: 3, AI: 2, AF: 3, AG: 4, AP: 5, AQ: 4, AU: 4 },
+    F:  { V: 4, AI: 5, AF: 4, AG: 4, AP: 3, AQ: 4, AU: 4 },
+    G:  { V: 5, AI: 4, AF: 3, AG: 3, AP: 4, AQ: 2, AU: 5 },
+    AD: { V: 4, AI: 3, AF: 4, AG: 5, AP: 5, AQ: 5, AU: 3 },
 };
 
-// 같은 축 2개 선택 규칙
+// 같은 축 다중 선택 규칙 (경고만, 차단하지 않음)
 const SAME_AXIS_RULES = {
-    'I':   { possible: false, icon: '🔴', note: '형식은 배타적. 둘 중 하나만 선택하세요.' },
-    'II':  { possible: true,  icon: '🟡', note: '먼저 선택한 것을 기본, 나중 것을 보조로.' },
-    'III': { possible: true,  icon: '🟡', note: '관계 1개+장르 1개는 OK. 관계 2개는 충돌 위험.' },
-    'IV':  { possible: true,  icon: '🟡', note: '배경 1개+구조 1개는 OK.' },
-    'V':   { possible: true,  icon: '✅', note: '모드는 자유롭게 겹침 가능.' },
+    'narration': { possible: true, icon: '🔴', note: '서술은 1개를 추천합니다. (M은 보조 레이어로 추가 가능)', recommended: 1, softException: 'M' },
+    'tone':      { possible: true, icon: '🟡', note: '3개까지를 추천합니다. 그 이상은 품질을 보장할 수 없습니다.', recommended: 3 },
+    'narrative': { possible: true, icon: '🟡', note: '관계 2 + 장르 2까지를 추천합니다. 그 이상은 품질을 보장할 수 없습니다.', recommended: 4 },
+    'world':     { possible: true, icon: '🟡', note: '배경 2 + 구조 2까지를 추천합니다.', recommended: 4 },
+    'mode':      { possible: true, icon: '✅', note: '모드는 자유롭게 겹침 가능.' },
 };
 
 // ── 축 ID 분류 (조합 분석용) ──
-const AXIS_FORMAT = ['K', 'L', 'M', 'N', 'O', 'P', 'R', 'S'];
-const AXIS_TONE   = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'J', 'T', 'AD', 'AH', 'AL', 'AN', 'AR'];
-const AXIS_GENRE  = ['U', 'X', 'AA', 'AB', 'H', 'AE', 'AJ'];
-const AXIS_WORLD  = ['I', 'Q', 'V', 'W', 'AC', 'AF', 'AG', 'AI', 'AM', 'AO', 'AP', 'AQ', 'AT', 'AU'];
-const AXIS_MODE   = ['AK', 'AS'];
-const AXIS_MAP    = { '형식': AXIS_FORMAT, '톤': AXIS_TONE, '관계/장르': AXIS_GENRE, '세계관': AXIS_WORLD, '모드': AXIS_MODE };
+const AXIS_NARRATION     = ['K', 'L', 'M', 'N', 'O', 'P', 'R', 'S'];
+const AXIS_TONE          = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'J', 'T', 'AD', 'AH', 'AL', 'AR'];
+// AN은 톤에서 서사/장르로 이동
+const AXIS_NARRATIVE_REL = ['U', 'X', 'AA', 'AB'];
+const AXIS_NARRATIVE_GEN = ['H', 'AE', 'AJ', 'AT', 'AN'];
+const AXIS_WORLD_BG      = ['V', 'AF', 'AI', 'AM', 'AP'];
+const AXIS_WORLD_ST      = ['I', 'Q', 'AG', 'AQ', 'AU', 'W', 'AC', 'AO'];
+// AT, AJ는 세계관에서 서사로 이동
+const AXIS_MODE          = ['AK', 'AS'];
+
+const AXIS_MAP = {
+    '서술':     AXIS_NARRATION,
+    '톤':       AXIS_TONE,
+    '서사/관계': AXIS_NARRATIVE_REL,
+    '서사/장르': AXIS_NARRATIVE_GEN,
+    '세계/배경': AXIS_WORLD_BG,
+    '세계/구조': AXIS_WORLD_ST,
+    '모드':     AXIS_MODE,
+};
+
+// backward compat (used in updatePromptInjection etc.)
+const AXIS_FORMAT = AXIS_NARRATION;
+const AXIS_GENRE  = [...AXIS_NARRATIVE_REL, ...AXIS_NARRATIVE_GEN];
+const AXIS_WORLD  = [...AXIS_WORLD_BG, ...AXIS_WORLD_ST];
 
 // 마찰 조합을 빠르게 확인하기 위한 시그니처 Set
 const FRICTION_SIGNATURES = new Set(
@@ -545,7 +565,7 @@ function analyzeCombination() {
 
     let messages = [];
 
-    // ── 시너지 테이블 점수 표시 (Ⅱ×Ⅲ, Ⅱ×Ⅳ) ──
+    // ── 시너지 테이블 점수 표시 (톤×서사, 톤×세계) ──
     const activeTones  = active.filter(id => AXIS_TONE.includes(id));
     const activeGenres = active.filter(id => AXIS_GENRE.includes(id));
     const activeWorlds = active.filter(id => AXIS_WORLD.includes(id));
@@ -602,28 +622,41 @@ function analyzeCombination() {
         }
     });
 
-    // ── 같은 축 중복 경고 (축별 규칙 적용) ──
+    // ── 같은 축 중복 경고 (추천 개수 초과 시 경고만, 차단하지 않음) ──
     if (styleData.axes) {
         styleData.axes.forEach(axis => {
             const rule = SAME_AXIS_RULES[axis.id];
-            if (!rule || (rule.possible && axis.id === 'V')) return; // 모드는 항상 OK
+            if (!rule || !rule.recommended) return; // 추천 제한 없는 축(모드 등)은 건너뜀
             const inAxis = active.filter(id => {
                 const found = styleData.styles.find(s => s.id === id);
                 return found && found.axis === axis.id;
             });
-            if (inAxis.length > 1) {
-                const cls = rule.possible ? 'sc-msg-warn' : 'sc-msg-bad';
-                messages.push(`<div class="sc-analysis-msg ${cls}">${rule.icon} [${axis.name}] 축에서 ${inAxis.length}개 선택 — ${rule.note}</div>`);
+            if (inAxis.length <= 1) return;
+
+            // 서술 축 소프트 예외: M(메타픽션)은 보조 레이어로 허용
+            if (rule.softException) {
+                const nonException = inAxis.filter(id => id !== rule.softException);
+                if (nonException.length <= rule.recommended) return;
+            }
+
+            if (inAxis.length > rule.recommended) {
+                let detail = '';
+                if (axis.id === 'narrative') {
+                    const relCount = inAxis.filter(id => AXIS_NARRATIVE_REL.includes(id)).length;
+                    const genCount = inAxis.filter(id => AXIS_NARRATIVE_GEN.includes(id)).length;
+                    detail = ` (관계 ${relCount}개, 장르 ${genCount}개)`;
+                }
+                messages.push(`<div class="sc-analysis-msg sc-msg-warn">⚠️ [${axis.name}] 축에서 ${inAxis.length}개 선택${detail} — ${rule.note}</div>`);
             }
         });
     }
 
     // 생략 축 기본값 안내
-    const hasFormat = active.some(id => AXIS_FORMAT.includes(id));
+    const hasFormat = active.some(id => AXIS_NARRATION.includes(id));
     const hasWorld  = active.some(id => AXIS_WORLD.includes(id));
     const hints = [];
-    if (!hasFormat) hints.push('형식: 톤(베이스)의 기본 형식 적용');
-    if (!hasWorld)  hints.push('세계관: 캐릭터 월드인포 기본 적용');
+    if (!hasFormat) hints.push('서술: 톤(베이스)의 기본 형식 적용');
+    if (!hasWorld)  hints.push('세계: 캐릭터 월드인포 기본 적용');
     if (hints.length > 0) {
         messages.push(`<div class="sc-analysis-msg sc-msg-hint">💡 ${hints.join(' / ')}</div>`);
     }
@@ -847,11 +880,13 @@ function updatePromptInjection() {
 
     let finalPrompt = '';
     if (selected.length > 0) {
-        const toneStyles   = selected.filter(s => AXIS_TONE.includes(s.id));
-        const genreStyles  = selected.filter(s => AXIS_GENRE.includes(s.id));
-        const formatStyles = selected.filter(s => AXIS_FORMAT.includes(s.id));
-        const worldStyles  = selected.filter(s => AXIS_WORLD.includes(s.id));
-        const modeStyles   = selected.filter(s => AXIS_MODE.includes(s.id));
+        const toneStyles         = selected.filter(s => AXIS_TONE.includes(s.id));
+        const narrativeRelStyles = selected.filter(s => AXIS_NARRATIVE_REL.includes(s.id));
+        const narrativeGenStyles = selected.filter(s => AXIS_NARRATIVE_GEN.includes(s.id));
+        const narrationStyles    = selected.filter(s => AXIS_NARRATION.includes(s.id));
+        const worldBgStyles      = selected.filter(s => AXIS_WORLD_BG.includes(s.id));
+        const worldStStyles      = selected.filter(s => AXIS_WORLD_ST.includes(s.id));
+        const modeStyles         = selected.filter(s => AXIS_MODE.includes(s.id));
 
         // 최종 모듈 맵: MODULE 번호 → 배열 of { source, axis, role, content }
         // role: 'base' | 'secondary' | 'overlay'
@@ -886,43 +921,43 @@ function updatePromptInjection() {
             }
         });
 
-        // STEP 2: 관계/장르 → MODULE_1(VOICE) + MODULE_4(CAUSALITY) (overlay)
-        genreStyles.forEach(s => {
+        // STEP 2: 서사(관계/장르) → MODULE_1(VOICE) + MODULE_4(CAUSALITY) (overlay)
+        [...narrativeRelStyles, ...narrativeGenStyles].forEach(s => {
             const { modules } = parseModules(s.prompt_payload);
             const hasParsedModules = Object.keys(modules).length > 0;
             if (hasParsedModules) {
-                if (modules[1]) addModule(1, s.id, 'III', 'overlay', modules[1]);
-                if (modules[4]) addModule(4, s.id, 'III', 'overlay', modules[4]);
+                if (modules[1]) addModule(1, s.id, 'narrative', 'overlay', modules[1]);
+                if (modules[4]) addModule(4, s.id, 'narrative', 'overlay', modules[4]);
                 if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
             } else {
-                addModule(1, s.id, 'III', 'overlay', s.prompt_payload);
+                addModule(1, s.id, 'narrative', 'overlay', s.prompt_payload);
             }
         });
 
-        // STEP 3: 형식 → MODULE_2(PROSE) + MODULE_7(FORMATTING) (overlay)
-        formatStyles.forEach(s => {
+        // STEP 3: 서술 → MODULE_2(PROSE) + MODULE_7(FORMATTING) (overlay)
+        narrationStyles.forEach(s => {
             const { modules } = parseModules(s.prompt_payload);
             const hasParsedModules = Object.keys(modules).length > 0;
             if (hasParsedModules) {
-                if (modules[2]) addModule(2, s.id, 'I', 'overlay', modules[2]);
-                if (modules[7]) addModule(7, s.id, 'I', 'overlay', modules[7]);
+                if (modules[2]) addModule(2, s.id, 'narration', 'overlay', modules[2]);
+                if (modules[7]) addModule(7, s.id, 'narration', 'overlay', modules[7]);
                 if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
             } else {
-                addModule(2, s.id, 'I', 'overlay', s.prompt_payload);
+                addModule(2, s.id, 'narration', 'overlay', s.prompt_payload);
             }
         });
 
-        // STEP 4: 세계관 → MODULE_1 + MODULE_3 + MODULE_6 (overlay)
-        worldStyles.forEach(s => {
+        // STEP 4: 세계(배경/구조) → MODULE_1 + MODULE_3 + MODULE_6 (overlay)
+        [...worldBgStyles, ...worldStStyles].forEach(s => {
             const { modules } = parseModules(s.prompt_payload);
             const hasParsedModules = Object.keys(modules).length > 0;
             if (hasParsedModules) {
-                if (modules[1]) addModule(1, s.id, 'IV', 'overlay', modules[1]);
-                if (modules[3]) addModule(3, s.id, 'IV', 'overlay', modules[3]);
-                if (modules[6]) addModule(6, s.id, 'IV', 'overlay', modules[6]);
+                if (modules[1]) addModule(1, s.id, 'world', 'overlay', modules[1]);
+                if (modules[3]) addModule(3, s.id, 'world', 'overlay', modules[3]);
+                if (modules[6]) addModule(6, s.id, 'world', 'overlay', modules[6]);
                 if (modules[8]) selfChecks.push({ source: s.id, content: modules[8] });
             } else {
-                addModule(3, s.id, 'IV', 'overlay', s.prompt_payload);
+                addModule(3, s.id, 'world', 'overlay', s.prompt_payload);
             }
         });
 
@@ -937,19 +972,28 @@ function updatePromptInjection() {
         finalPrompt = '### [COMBINED LITERARY ROLEPLAY ENGINE]\n\n';
 
         finalPrompt += '## BUILD ORDER & PRIORITY\n';
-        finalPrompt += '충돌 시 우선순위: 모드(Ⅴ) > 관계/장르(Ⅲ) > 톤(Ⅱ) > 형식(Ⅰ) > 세계관(Ⅳ)\n';
+        finalPrompt += '충돌 시 우선순위: 모드(⑤) > 서사(③) > 톤(②) > 서술(①) > 세계(④)\n';
         finalPrompt += 'Supreme Rule: 캐릭터 진실성이 모든 것 위에 있습니다.\n';
         finalPrompt += '같은 축에서 복수 선택 시: 먼저 선택된 것이 기본(BASE), 나중 것이 보조(SECONDARY).\n';
         finalPrompt += '서로 다른 축의 같은 모듈이 충돌하면, 우선순위가 높은 축의 규칙을 따르되 다른 축의 고유한 규칙도 가능한 한 반영합니다.\n\n';
 
         finalPrompt += '## CONFLICT RESOLUTION\n';
-        finalPrompt += '- 비유 허용/금지 충돌 → 관계/장르 우선\n';
-        finalPrompt += '- 감정 명명 충돌 → 관계/장르 우선\n';
-        finalPrompt += '- 시제 충돌 → 형식 우선\n';
+        finalPrompt += '- 비유 허용/금지 충돌 → 서사 우선\n';
+        finalPrompt += '- 감정 명명 충돌 → 서사 우선\n';
+        finalPrompt += '- 시제 충돌 → 서술 우선\n';
         finalPrompt += '- FID 비율 충돌 → 높은 쪽 채택\n';
-        finalPrompt += '- 감각 우선순위 → 세계관 > 톤 > 기본값\n';
+        finalPrompt += '- 감각 우선순위 → 세계 > 톤 > 기본값\n';
         finalPrompt += '- 문단 길이 → 긴 쪽 상한, 짧은 쪽 하한\n';
         finalPrompt += '- 대사 길이 → 짧은 쪽 채택\n\n';
+
+        finalPrompt += '## COMPOSITION METHODS\n';
+        finalPrompt += '- 톤 복수 선택: blend (문장 단위에서 섞임. 주 톤이 구조, 부 톤이 변조)\n';
+        finalPrompt += '- 서사/관계 복수: layer (주 관계가 공식 역학, 부 관계가 이면)\n';
+        finalPrompt += '- 서사/장르 복수: alternate (장면별 교대. 긴장도 변화 기준)\n';
+        finalPrompt += '- 서사 관계+장르: layer (장르가 기반, 관계가 위에 얹힘)\n';
+        finalPrompt += '- 세계/배경 복수: blend (두 세계관 요소가 자연스럽게 혼합)\n';
+        finalPrompt += '- 세계/구조 복수: layer (주 구조가 기본 틀, 부 구조가 추가 규칙)\n';
+        finalPrompt += '- 모드: layer (항상 모든 것 위에 얹힘)\n\n';
 
         // 모드 레이어 (최상단)
         if (modeBlocks.length > 0) {
